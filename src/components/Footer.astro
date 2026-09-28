@@ -33,7 +33,7 @@ const counterUrl = analytics.goatcounter ? `https://${analytics.goatcounter}.goa
     fetch(el.dataset.visits!)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: { count?: string }) => {
-        if (!d.count) return;
+        if (!d.count || d.count === '0') return;
         el.textContent = ` · ${d.count} visitors so far`;
         el.hidden = false;
       })

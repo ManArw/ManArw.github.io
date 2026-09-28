@@ -90,7 +90,7 @@ export const d2c = {
 // Visitor counter via GoatCounter (free, no cookies). Paste your GoatCounter
 // code here (e.g. 'manas' for manas.goatcounter.com) to switch it on.
 export const analytics = {
-  goatcounter: '',
+  goatcounter: 'manarw',
 };
 
 // "Now" page (nownownow.com style). Update whenever life moves.
