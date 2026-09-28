@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bg { fill: #0e1a2b; }
+    .snow { fill: #eef3f8; }
+    @media (prefers-color-scheme: dark) { .bg { fill: #eef3f8; } .snow { fill: #0e1a2b; } }
+  </style>
+  <rect class="bg" width="32" height="32" rx="7"/>
+  <path class="snow" d="M5 24 L13.5 10.5 Q16 8 18.5 10.5 L27 24 Z"/>
+</svg>

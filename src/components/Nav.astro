@@ -1,0 +1,213 @@
+---
+import { nav, site } from '../data/site';
+
+interface Props {
+  overlay?: boolean;
+}
+const { overlay = false } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isCurrent = (href: string) => !href.includes('#') && (path === href || path.startsWith(href + '/'));
+---
+
+<header class:list={['site-nav', { overlay }]} data-nav>
+  <div class="bar">
+    <a class="mark" href="/" aria-label={`${site.name}, home`}>
+      <span aria-hidden="true">M</span><span class="mark-rest" aria-hidden="true">anas</span>
+    </a>
+
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-btn>
+      <span class="visually-hidden">Menu</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path class="l1" d="M4 8h16"></path>
+        <path class="l2" d="M4 16h16"></path>
+      </svg>
+    </button>
+
+    <nav id="site-menu" aria-label="Main">
+      <ul>
+        {
+          nav.map((item) => (
+            <li>
+              <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-nav {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: var(--z-nav);
+    transition:
+      background-color var(--dur-2) ease,
+      box-shadow var(--dur-2) ease,
+      color var(--dur-2) ease;
+  }
+  .site-nav:not(.overlay),
+  .site-nav.scrolled {
+    background: var(--mist);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    box-shadow: 0 1px 0 var(--line);
+  }
+  /* Over the home hero the sky is always light, so keep ink dark there. */
+  .site-nav.overlay:not(.scrolled) {
+    color: #0e1a2b;
+  }
+  .bar {
+    width: min(100% - 2rem, 80rem);
+    margin-inline: auto;
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+  .mark {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .mark-rest {
+    font-weight: 300;
+  }
+  nav ul {
+    list-style: none;
+    display: flex;
+    gap: clamp(1rem, 2.5vw, 2rem);
+    margin: 0;
+    padding: 0;
+  }
+  nav a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+  }
+  nav a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.6rem;
+    height: 1.5px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+  nav a:hover::after,
+  nav a[aria-current='page']::after {
+    transform: scaleX(1);
+  }
+  .menu-btn {
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    .menu-btn {
+      display: inline-grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      margin-right: -10px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+    .menu-btn svg {
+      width: 26px;
+      height: 26px;
+    }
+    .menu-btn path {
+      transition: transform var(--dur-2) var(--ease-out);
+      transform-origin: center;
+    }
+    .menu-btn[aria-expanded='true'] .l1 {
+      transform: translateY(4px) rotate(45deg);
+    }
+    .menu-btn[aria-expanded='true'] .l2 {
+      transform: translateY(-4px) rotate(-45deg);
+    }
+    nav {
+      position: absolute;
+      top: 4rem;
+      left: 0;
+      right: 0;
+      background: var(--bg);
+      color: var(--ink);
+      border-bottom: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition:
+        opacity var(--dur-2) var(--ease-out),
+        transform var(--dur-2) var(--ease-out),
+        visibility 0s linear var(--dur-2);
+    }
+    .site-nav.open nav {
+      visibility: visible;
+      opacity: 1;
+      transform: none;
+      transition-delay: 0s;
+    }
+    nav ul {
+      flex-direction: column;
+      gap: 0;
+      padding: var(--space-2) 1rem var(--space-4);
+    }
+    nav a {
+      width: 100%;
+      font-size: 1.35rem;
+      font-weight: 300;
+      min-height: 52px;
+    }
+    nav a::after {
+      bottom: 0.7rem;
+      right: auto;
+      width: 2rem;
+    }
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-nav]')!;
+  const btn = header.querySelector<HTMLButtonElement>('[data-menu-btn]')!;
+
+  const setOpen = (open: boolean) => {
+    header.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  btn.addEventListener('click', () => setOpen(btn.getAttribute('aria-expanded') !== 'true'));
+  header.querySelectorAll('nav a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && header.classList.contains('open')) {
+      setOpen(false);
+      btn.focus();
+    }
+  });
+
+  if (header.classList.contains('overlay')) {
+    const onScroll = () => header.classList.toggle('scrolled', window.scrollY > window.innerHeight * 0.6);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+</script>

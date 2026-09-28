@@ -1,0 +1,710 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Family from '../components/Family.astro';
+import SoundToggle from '../components/SoundToggle.astro';
+import D2CTeaser from '../components/D2CTeaser.astro';
+import fuji from '../assets/fuji.jpg';
+import fujiDusk from '../assets/japan/fuji-dusk.jpg';
+import fujiTrain from '../assets/japan/fuji-shinkansen.jpg';
+import cairn from '../assets/japan/cairn.jpg';
+import { site, now, socials } from '../data/site';
+import { getArticles, getNotes } from '../lib/substack';
+
+const articles = (await getArticles()).slice(0, 3);
+// A short Note to quote on the home page (the most recent one that fits).
+const fragment = (await getNotes()).find((n) => n.body.length < 160 && !n.image);
+const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<Base overlayNav>
+  <div class="stage" data-stage>
+    <!-- The photo stays pinned while the story scrolls over it, sinking
+         from bright sky into the deep blue at the foot of the mountain. -->
+    <div class="backdrop" aria-hidden="true">
+      <Image
+        src={fuji}
+        alt=""
+        widths={[640, 960]}
+        sizes="100vw"
+        format="webp"
+        quality={85}
+        loading="eager"
+        fetchpriority="high"
+        class="photo"
+      />
+      <!-- Near the end of the story, day turns to dusk at Kawaguchiko. -->
+      <Image src={fujiDusk} alt="" widths={[960, 1600, 2000]} sizes="100vw" format="webp" quality={80} class="photo photo-dusk" />
+      <div class="dusk"></div>
+      <div class="grain"></div>
+    </div>
+
+    <section class="hero" aria-labelledby="hero-name">
+      <div class="hero-inner">
+        <h1 id="hero-name" class="name">
+          <span class="word">{site.firstName}</span>
+          <span class="word">{site.lastName}</span>
+        </h1>
+        <p class="tagline">{site.tagline}</p>
+        <div class="cta">
+          <a class="btn" href="#hey" data-explore="sound">Explore</a>
+          <a class="quiet" href="#hey" data-explore="silent">Explore without sound</a>
+        </div>
+      </div>
+      <a class="scroll-cue" href="#hey" aria-label="Scroll down">
+        <span aria-hidden="true"></span>
+      </a>
+    </section>
+
+    <section id="hey" class="chapter" aria-labelledby="hey-title">
+      <div class="measure center">
+        <p class="kicker reveal">Hey.</p>
+        <h2 id="hey-title" class="big reveal" style="--delay:120ms">This is me.</h2>
+        <p class="lead reveal" style="--delay:240ms">
+          Manas. Engineering student in Mysore, editor by habit, writer by necessity. I photographed this
+          mountain in Japan and kept thinking about how it hides in its own weather. Most people do.
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" aria-labelledby="family-title">
+      <div class="wrap center">
+        <p class="kicker reveal">And this is</p>
+        <h2 id="family-title" class="big reveal" style="--delay:120ms">the rest of the household.</h2>
+        <div class="family-wrap">
+          <Family />
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" aria-labelledby="write-title">
+      <div class="wrap">
+        <div class="measure center">
+          <p class="kicker reveal">We are surrounded by</p>
+          <h2 id="write-title" class="big reveal" style="--delay:120ms">
+            things we <em>never say out loud</em>
+          </h2>
+          <p class="lead reveal" style="--delay:240ms">so I write them down. Essays and poems on love, belonging, hope, and the cost of mattering.</p>
+        </div>
+
+        {
+          fragment && (
+            <figure class="fragment reveal">
+              <blockquote>
+                <p>{fragment.body}</p>
+              </blockquote>
+              <figcaption>
+                <a href="/fragments">More fragments →</a>
+              </figcaption>
+            </figure>
+          )
+        }
+
+        <ul class="essays" role="list">
+          {
+            articles.map((a, i) => (
+              <li class="reveal" style={`--delay:${i * 110}ms`}>
+                <a href={`/articles/${a.slug}`}>
+                  <span class="meta">
+                    <time datetime={a.date}>{fmt.format(new Date(a.date))}</time> · {a.minutes} min
+                  </span>
+                  <span class="t">{a.title}</span>
+                  <span class="s">{a.subtitle}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="center reveal">
+          <a class="btn" href="/articles">
+            All essays
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </a>
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter japan" aria-labelledby="japan-title">
+      <div class="wrap">
+        <div class="measure center">
+          <p class="kicker reveal">Last November,</p>
+          <h2 id="japan-title" class="big reveal" style="--delay:120ms">I finally met the mountain.</h2>
+          <p class="lead reveal" style="--delay:240ms">
+            Ten days in Japan with my family: Tokyo, Kawaguchiko, Kyoto, one bullet-train dream, and a lot of cold
+            mornings waiting for Fuji-san to come out of the clouds.
+          </p>
+        </div>
+        <div class="reel">
+          <figure class="reel-item tall reveal">
+            <video muted loop playsinline preload="none" poster="/media/fuji-first-glimpse-poster.jpg" aria-label="A slow pan across Mount Fuji over Lake Kawaguchiko." data-reel-video>
+              <source src="/media/fuji-first-glimpse.mp4" type="video/mp4" />
+            </video>
+            <figcaption>Kawaguchiko, day 3</figcaption>
+          </figure>
+          <figure class="reel-item reveal" style="--delay:110ms">
+            <Image src={fujiTrain} alt="Mount Fuji wrapped in cloud, seen from the Shinkansen." widths={[480, 800]} sizes="(min-width: 900px) 22rem, 90vw" />
+            <figcaption>From the Shinkansen, seat D</figcaption>
+          </figure>
+          <figure class="reel-item reveal" style="--delay:220ms">
+            <Image src={cairn} alt="A small stack of balanced stones." widths={[480, 800]} sizes="(min-width: 900px) 22rem, 90vw" />
+            <figcaption>A prayer in stones, Arashiyama</figcaption>
+          </figure>
+        </div>
+        <p class="center reveal">
+          <a class="btn" href="/blog/japan-ten-days">
+            Read the travelogue
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </a>
+          <a class="quiet-link" href={site.instagram} rel="noopener" target="_blank">More photos on Instagram {site.instagramHandle}</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="chapter" aria-labelledby="now-title">
+      <div class="measure center">
+        <p class="kicker reveal">Right now I'm</p>
+        <h2 id="now-title" class="big reveal" style="--delay:120ms">
+          building a D2C business<br /><span class="and">and</span> figuring out my purpose.
+        </h2>
+        <p class="lead reveal" style="--delay:240ms">
+          Both are going about as well as you'd expect. The <a href="/now">now page</a> has the details, and the{' '}
+          <a href="/blog">blog</a> has the notes from along the way.
+        </p>
+        <div class="reveal" style="--delay:320ms">
+          <D2CTeaser />
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter doors" aria-labelledby="doors-title">
+      <div class="wrap">
+        <h2 id="doors-title" class="visually-hidden">Explore the site</h2>
+        <ul class="door-grid" role="list">
+          <li class="reveal">
+            <a href="/about">
+              <span class="k">I study</span>
+              <span class="d">Engineering</span>
+              <span class="x">B.E. at JSS Science and Technology University, expected 2028.</span>
+            </a>
+          </li>
+          <li class="reveal" style="--delay:110ms">
+            <a href="/about#experience">
+              <span class="k">I lead</span>
+              <span class="d">Stories & teams</span>
+              <span class="x">Vice President at VentureX SJCE. Analyst at Pantheon Consulting Club.</span>
+            </a>
+          </li>
+          <li class="reveal" style="--delay:220ms">
+            <a href="/blog">
+              <span class="k">I keep</span>
+              <span class="d">A notebook</span>
+              <span class="x">Travel writing, and shorter posts that don't fit an essay.</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="contact" class="chapter finale" aria-labelledby="contact-title">
+      <div class="measure center">
+        <p class="kicker reveal">Let's talk.</p>
+        <h2 id="contact-title" class="big reveal" style="--delay:120ms">Say hello.</h2>
+        <p class="lead reveal" style="--delay:240ms">
+          About an essay, a collaboration, the business, or which of the puppies is your favourite.
+        </p>
+        <p class="reveal contact-actions" style="--delay:360ms">
+          <a class="btn" href={`mailto:${site.email}`}>{site.email}</a>
+        </p>
+        <ul class="socials reveal" role="list" style="--delay:420ms">
+          {
+            socials.map((s) => (
+              <li>
+                <a href={s.href} rel="noopener" target="_blank">
+                  {s.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="updated">Now page last updated {fmt.format(new Date(now.updated))}.</p>
+      </div>
+    </section>
+  </div>
+
+  <SoundToggle />
+</Base>
+
+<style>
+  .stage {
+    --p: 0;
+    --d: 0;
+    position: relative;
+    color: #eef3f8;
+    background: #0a1220;
+  }
+
+  /* ---------- pinned photo ---------- */
+  .backdrop {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100lvh;
+    margin-bottom: -100vh;
+    margin-bottom: -100lvh;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .backdrop :global(.photo) {
+    position: absolute;
+    inset: -6% 0 0 0;
+    width: 100%;
+    height: 112%;
+    object-fit: cover;
+    object-position: 50% 44%;
+    transform: translate3d(0, calc(var(--p) * -5%), 0) scale(calc(1.02 + var(--p) * 0.06));
+    transform-origin: 50% 60%;
+    will-change: transform;
+  }
+  .backdrop :global(.photo-dusk) {
+    inset: 0;
+    height: 100%;
+    object-position: 35% 55%;
+    transform: none;
+    opacity: var(--d);
+    will-change: opacity;
+  }
+  /* Opacity-only overlay: sky → valley blue as you scroll, easing off as the
+     dusk photo arrives so the mountain shows through at the end. */
+  .dusk {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to bottom, rgba(10, 18, 32, 0.5), rgba(10, 18, 32, 0.95) 75%);
+    opacity: calc(clamp(0, var(--p) * 1.6, 1) - var(--d) * 0.35);
+  }
+  .grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  section {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: grid;
+    color: #0e1a2b;
+  }
+  .hero-inner {
+    align-self: start;
+    justify-self: center;
+    text-align: center;
+    padding: clamp(5.5rem, 14vh, 9rem) 1rem 0;
+  }
+  .name {
+    font-size: var(--step-5);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 0.28em;
+  }
+  .word {
+    display: inline-block;
+    animation: rise 1.4s var(--ease-out) both;
+  }
+  .word + .word {
+    animation-delay: 0.15s;
+    font-weight: 300;
+  }
+  .tagline {
+    margin-top: var(--space-4);
+    font-size: var(--step-2);
+    font-style: italic;
+    font-weight: 400;
+    animation: rise 1.4s var(--ease-out) 0.35s both;
+  }
+  .cta {
+    margin-top: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    animation: rise 1.4s var(--ease-out) 0.55s both;
+  }
+  .hero .btn {
+    background: rgba(243, 246, 249, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .hero .btn:hover {
+    background: #0e1a2b;
+    color: #f3f6f9;
+  }
+  .quiet {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 500;
+    text-decoration: none;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.85;
+  }
+  .quiet:hover {
+    text-decoration: underline;
+  }
+  .scroll-cue {
+    position: absolute;
+    left: 50%;
+    bottom: 1.5rem;
+    translate: -50% 0;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    color: #eef3f8;
+  }
+  .scroll-cue span {
+    width: 1.5px;
+    height: 34px;
+    background: currentColor;
+    transform-origin: top;
+    animation: drip 2.4s ease-in-out infinite;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+  }
+  @keyframes drip {
+    0% {
+      transform: scaleY(0);
+      opacity: 1;
+    }
+    60% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleY(1);
+      opacity: 0;
+    }
+  }
+
+  /* ---------- story chapters ---------- */
+  .chapter {
+    min-height: 92vh;
+    display: grid;
+    align-content: center;
+    padding-block: var(--space-7);
+  }
+  .center {
+    text-align: center;
+  }
+  .kicker {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-weight: 300;
+    opacity: 0.85;
+  }
+  .big {
+    margin-top: var(--space-2);
+    font-size: var(--step-4);
+    font-weight: 300;
+    line-height: 1.02;
+  }
+  .big em {
+    font-family: var(--font-body);
+    font-style: italic;
+    font-weight: 400;
+  }
+  .and {
+    font-family: var(--font-body);
+    font-style: italic;
+    font-size: 0.7em;
+  }
+  .lead {
+    margin: var(--space-4) auto 0;
+    font-size: var(--step-1);
+    line-height: 1.55;
+    max-width: 34rem;
+    color: #c9d5e3;
+  }
+  .lead a,
+  .socials a {
+    color: #eef3f8;
+  }
+  .family-wrap {
+    margin-top: var(--space-6);
+  }
+
+  .essays {
+    list-style: none;
+    margin: var(--space-6) 0 var(--space-5);
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-4);
+  }
+  .essays a,
+  .door-grid a {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid rgba(238, 243, 248, 0.2);
+    border-radius: 14px;
+    background: rgba(16, 27, 44, 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    text-decoration: none;
+    transition:
+      border-color var(--dur-2) ease,
+      background-color var(--dur-2) ease,
+      transform var(--dur-2) var(--ease-out);
+  }
+  .essays a:hover,
+  .door-grid a:hover {
+    border-color: rgba(238, 243, 248, 0.55);
+    background: rgba(16, 27, 44, 0.7);
+    transform: translateY(-3px);
+  }
+  .meta,
+  .k {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    letter-spacing: 0.06em;
+    color: #a9b8ca;
+  }
+  .t {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+  .s,
+  .x {
+    font-style: italic;
+    color: #c9d5e3;
+    line-height: 1.45;
+  }
+  .essays .btn,
+  .finale .btn {
+    color: #eef3f8;
+  }
+  .stage .btn:hover {
+    background: #eef3f8;
+    color: #0a1220;
+  }
+
+  .door-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: var(--space-4);
+  }
+  .door-grid .k {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  .d {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-weight: 300;
+    line-height: 1.05;
+  }
+
+  .fragment {
+    margin: var(--space-6) auto 0;
+    max-width: 36rem;
+    text-align: center;
+  }
+  .fragment blockquote {
+    margin: 0;
+    font-size: var(--step-2);
+    font-style: italic;
+    line-height: 1.35;
+    white-space: pre-line;
+  }
+  .fragment blockquote p::before {
+    content: '“';
+  }
+  .fragment blockquote p::after {
+    content: '”';
+  }
+  .fragment figcaption {
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+  }
+  .fragment a {
+    color: #a9b8ca;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .reel {
+    margin: var(--space-6) 0 var(--space-5);
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    grid-template-rows: auto auto;
+    gap: var(--space-4);
+  }
+  .reel-item {
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #101b2c;
+  }
+  .reel-item.tall {
+    grid-row: span 2;
+  }
+  .reel-item video,
+  .reel-item :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1.2s var(--ease-out);
+  }
+  .reel-item:hover :global(img) {
+    transform: scale(1.04);
+  }
+  .reel-item:not(.tall) {
+    aspect-ratio: 4 / 3;
+  }
+  .reel-item figcaption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: var(--space-4) var(--space-3) var(--space-3);
+    background: linear-gradient(to top, rgba(10, 18, 32, 0.8), transparent);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    letter-spacing: 0.04em;
+    text-align: left;
+  }
+  .japan .btn {
+    color: #eef3f8;
+  }
+  .quiet-link {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 44px;
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: #a9b8ca;
+  }
+  @media (max-width: 720px) {
+    .reel {
+      grid-template-columns: 1fr 1fr;
+    }
+    .reel-item.tall {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      aspect-ratio: 1;
+    }
+  }
+
+  .finale {
+    text-shadow: 0 1px 18px rgba(10, 18, 32, 0.55);
+  }
+  .contact-actions {
+    margin-top: var(--space-5);
+  }
+  .contact-actions .btn {
+    font-size: var(--step-0);
+    overflow-wrap: anywhere;
+  }
+  .socials {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    font-family: var(--font-display);
+  }
+  .socials a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .updated {
+    margin-top: var(--space-6);
+    font-size: var(--step--1);
+    color: #a9b8ca;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .backdrop :global(.photo) {
+      transform: none;
+    }
+    .scroll-cue span {
+      animation: none;
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  // Drive --p (0 at top → 1 one screen down) for the photo + dusk overlay.
+  // Only transform/opacity change, via a single rAF-throttled scroll listener.
+  // --d (0 → 1) cross-fades to the dusk photo over the last two chapters.
+  const stage = document.querySelector<HTMLElement>('[data-stage]')!;
+  const doors = document.querySelector<HTMLElement>('.doors')!;
+  let ticking = false;
+  const update = () => {
+    const vh = window.innerHeight;
+    const p = Math.min(1, Math.max(0, window.scrollY / vh));
+    const start = doors.offsetTop - vh; // when the doors chapter starts entering
+    const d = Math.min(1, Math.max(0, (window.scrollY - start) / (vh * 1.2)));
+    stage.style.setProperty('--p', p.toFixed(3));
+    stage.style.setProperty('--d', d.toFixed(3));
+    ticking = false;
+  };
+  update();
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    },
+    { passive: true },
+  );
+
+  // The Kawaguchiko clip only loads and plays while it's on screen.
+  const reelVideo = document.querySelector<HTMLVideoElement>('[data-reel-video]');
+  if (reelVideo && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    new IntersectionObserver(
+      ([e]) => (e.isIntersecting ? reelVideo.play().catch(() => {}) : reelVideo.pause()),
+      { threshold: 0.3 },
+    ).observe(reelVideo);
+  }
+
+  // "Explore" turns on the ambient wind; "Explore without sound" just scrolls.
+  document.querySelectorAll<HTMLAnchorElement>('[data-explore="sound"]').forEach((a) =>
+    a.addEventListener('click', () => window.dispatchEvent(new CustomEvent('ambient:on'))),
+  );
+</script>

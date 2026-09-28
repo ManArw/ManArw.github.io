@@ -1,0 +1,260 @@
+---
+import Base from '../layouts/Base.astro';
+import { site, education, experience, projects, skills } from '../data/site';
+---
+
+<Base title="About" description="About Manas H Arawalli: education, experience, and what he writes about.">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow">About</p>
+      <h1>Hello, I'm Manas.</h1>
+      <p class="lede">
+        An engineering student at JSS Science and Technology University who ended up spending most of his time on words:
+        editing, scripting, telling other people's stories, and, on Substack, trying to tell my own.
+      </p>
+    </header>
+
+    <div class="grid">
+      <aside class="side">
+        <dl class="facts reveal">
+          <div><dt>Based in</dt><dd>{site.location}</dd></div>
+          <div><dt>Studying</dt><dd>B.E., JSS STU · 2028</dd></div>
+          <div><dt>Writing</dt><dd><a href={site.substack} rel="noopener" target="_blank">manas1211.substack.com</a></dd></div>
+          <div><dt>Photos</dt><dd><a href={site.instagram} rel="noopener" target="_blank">Instagram {site.instagramHandle}</a></dd></div>
+          <div><dt>Elsewhere</dt><dd><a href={site.linkedin} rel="noopener" target="_blank">LinkedIn</a> · <a href={site.github} rel="noopener" target="_blank">GitHub</a></dd></div>
+          <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+        </dl>
+      </aside>
+
+      <div class="main">
+        <section aria-labelledby="bio-h" class="block reveal">
+          <h2 id="bio-h">The short version</h2>
+          <div class="prose">
+            <p>
+              I lead the editorial and brand side of VentureX SJCE, the entrepreneurship cell at my university, where I've
+              gone from writing event copy to serving as Vice President. I also work as an analyst with the Pantheon
+              Consulting Club.
+            </p>
+            <p>
+              Outside of that, I write personal essays and poetry about identity, human connection, and the things we'd
+              rather not say out loud. Right now I'm also building a direct-to-consumer business, and trying to work out
+              what all of it is for.
+            </p>
+          </div>
+        </section>
+
+        <section id="academics" aria-labelledby="edu-h" class="block">
+          <h2 id="edu-h" class="reveal">Academics</h2>
+          {
+            education.map((e) => (
+              <div class="entry reveal">
+                <div class="entry-head">
+                  <h3>{e.school}</h3>
+                  <span class="when">{e.when}</span>
+                </div>
+                <p class="role">{e.degree} · {e.place}</p>
+              </div>
+            ))
+          }
+        </section>
+
+        <section id="experience" aria-labelledby="exp-h" class="block">
+          <h2 id="exp-h" class="reveal">Experience</h2>
+          {
+            experience.map((org) => (
+              <div class="entry reveal">
+                <div class="entry-head">
+                  <h3>{org.org}</h3>
+                  <span class="when">{org.place}</span>
+                </div>
+                <p class="role">{org.area}</p>
+                <ol class="roles" role="list">
+                  {org.roles.map((r) => (
+                    <li>
+                      <div class="entry-head">
+                        <h4>{r.title}</h4>
+                        <span class="when">{r.when}</span>
+                      </div>
+                      <ul>
+                        {r.points.map((pt) => (
+                          <li>{pt}</li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))
+          }
+        </section>
+
+        <section aria-labelledby="proj-h" class="block">
+          <h2 id="proj-h" class="reveal">Projects & leadership</h2>
+          {
+            projects.map((p) => (
+              <div class="entry reveal">
+                <div class="entry-head">
+                  <h3>{p.title}</h3>
+                  <span class="when">{p.when}</span>
+                </div>
+                <p class="role">{p.role}</p>
+                <p class="body">{p.body}</p>
+              </div>
+            ))
+          }
+        </section>
+
+        <section aria-labelledby="skills-h" class="block">
+          <h2 id="skills-h" class="reveal">Skills & languages</h2>
+          <div class="skills">
+            {
+              skills.map((s) => (
+                <div class="reveal">
+                  <h3 class="skill-h">{s.group}</h3>
+                  <ul class="chips" role="list">
+                    {s.items.map((it) => (
+                      <li>{it}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            }
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+    gap: var(--space-6);
+    padding-bottom: var(--space-7);
+  }
+  .side {
+    position: relative;
+  }
+  .facts {
+    position: sticky;
+    top: 6rem;
+    margin: 0;
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  .facts dt {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .facts dd {
+    margin: 0.15rem 0 0;
+    overflow-wrap: anywhere;
+  }
+  .facts a,
+  .lede a {
+    color: var(--accent);
+  }
+  .main {
+    min-width: 0;
+    max-width: 44rem;
+  }
+  .block + .block {
+    margin-top: var(--space-6);
+  }
+  .block > h2 {
+    font-size: var(--step-2);
+    font-weight: 400;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: var(--space-4);
+  }
+  .entry + .entry {
+    margin-top: var(--space-5);
+  }
+  .entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0 var(--space-3);
+  }
+  h3 {
+    font-size: var(--step-1);
+    font-weight: 500;
+  }
+  h4 {
+    font-size: var(--step-0);
+    font-weight: 600;
+  }
+  .when {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .role {
+    margin-top: var(--space-1);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .body {
+    margin-top: var(--space-2);
+  }
+  .roles {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0 0 0 var(--space-4);
+    border-left: 1px solid var(--line);
+    display: grid;
+    gap: var(--space-4);
+  }
+  .roles ul {
+    margin: var(--space-2) 0 0;
+    padding-left: 1.1em;
+  }
+  .roles ul li + li {
+    margin-top: 0.3em;
+  }
+  .skills {
+    display: grid;
+    gap: var(--space-4);
+  }
+  .skill-h {
+    font-size: var(--step-0);
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+  }
+  .chips {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .chips li {
+    padding: 0.3em 0.9em 0.2em;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    background: var(--surface);
+  }
+  @media (max-width: 860px) {
+    .grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+    .facts {
+      position: static;
+    }
+  }
+</style>

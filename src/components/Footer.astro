@@ -1,0 +1,85 @@
+---
+import { site, socials, analytics } from '../data/site';
+const year = new Date().getFullYear();
+const counterUrl = analytics.goatcounter ? `https://${analytics.goatcounter}.goatcounter.com/counter/TOTAL.json` : '';
+---
+
+<footer class="site-footer">
+  <div class="wrap inner">
+    <p class="sign">{site.name}</p>
+    <ul class="links">
+      {
+        socials.map((s) => (
+          <li>
+            <a href={s.href} rel="noopener" target="_blank">
+              {s.label}
+            </a>
+          </li>
+        ))
+      }
+      <li><a href={`mailto:${site.email}`}>Email</a></li>
+    </ul>
+    <p class="small">
+      © {year} · Written in {site.location}. Photos of Japan by me.
+      {counterUrl && <span class="visits" data-visits={counterUrl} hidden />}
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Public visitor count from GoatCounter. Hidden if it can't be loaded.
+  const el = document.querySelector<HTMLElement>('[data-visits]');
+  if (el) {
+    fetch(el.dataset.visits!)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d: { count?: string }) => {
+        if (!d.count) return;
+        el.textContent = ` · ${d.count} visitors so far`;
+        el.hidden = false;
+      })
+      .catch(() => {});
+  }
+</script>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--line);
+    padding-block: var(--space-5);
+    font-family: var(--font-display);
+  }
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+  }
+  .sign {
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  .links {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    margin: 0;
+    padding: 0;
+  }
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    transition: color var(--dur-1);
+  }
+  .links a:hover {
+    color: var(--ink);
+  }
+  .small {
+    flex-basis: 100%;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+</style>

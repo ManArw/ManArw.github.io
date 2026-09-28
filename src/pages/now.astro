@@ -1,0 +1,101 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import { now } from '../data/site';
+import cairn from '../assets/japan/cairn.jpg';
+import D2CTeaser from '../components/D2CTeaser.astro';
+
+const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<Base title="Now" description="What Manas H Arawalli is doing right now.">
+  <div class="measure">
+    <header class="page-head">
+      <p class="eyebrow">Now · updated <time datetime={now.updated}>{fmt.format(new Date(now.updated))}</time></p>
+      <h1>What I'm up to</h1>
+      <p class="lede">A snapshot of this season of life. If you've met me recently, this is probably what I talked about.</p>
+    </header>
+
+    <figure class="cairn reveal">
+      <Image src={cairn} alt="A small stack of four stones balanced on a rock." widths={[640, 1024, 1400]} sizes="(min-width: 700px) 38rem, 100vw" />
+      <figcaption>Still working out how to stack them. Arashiyama, Kyoto.</figcaption>
+    </figure>
+
+    <ol class="now" role="list">
+      {
+        now.items.map((item, i) => (
+          <li class="reveal" style={`--delay:${i * 70}ms`}>
+            <span class="num" aria-hidden="true">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <div>
+              <h2>{item.title}</h2>
+              <p>{item.body}</p>
+              {i === 0 && <D2CTeaser />}
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+
+    <p class="foot">
+      This is a <a href="https://nownownow.com/about" rel="noopener" target="_blank">now page</a>. It changes when life does.
+    </p>
+  </div>
+</Base>
+
+<style>
+  .cairn {
+    margin: 0 0 var(--space-5);
+  }
+  .cairn :global(img) {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+  .cairn figcaption {
+    margin-top: var(--space-2);
+    font-size: var(--step--1);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .now {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .now li {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: var(--space-3);
+    padding-block: var(--space-4);
+    border-top: 1px solid var(--line);
+  }
+  .num {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--accent);
+    padding-top: 0.4em;
+  }
+  h2 {
+    font-size: var(--step-2);
+    font-weight: 400;
+  }
+  .now li > div > p {
+    margin-top: var(--space-2);
+    color: var(--ink-soft);
+  }
+  .now :global(.teaser) {
+    margin-left: 0;
+  }
+  .foot {
+    padding-block: var(--space-5) var(--space-7);
+    border-top: 1px solid var(--line);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+  .foot a {
+    color: var(--accent);
+  }
+</style>

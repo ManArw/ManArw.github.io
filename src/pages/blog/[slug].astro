@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from 'astro:content';
+import Reading from '../../layouts/Reading.astro';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('blog', ({ data }) => import.meta.env.DEV || !data.draft);
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+// Count only prose words, not MDX imports or component tags.
+const prose = (entry.body ?? '').replace(/^import .*$/gm, '').replace(/<[^>]+>/g, ' ');
+const words = prose.split(/\s+/).filter(Boolean).length;
+---
+
+<Reading
+  kind="Blog"
+  title={entry.data.title}
+  subtitle={entry.data.summary}
+  date={entry.data.date}
+  minutes={Math.max(1, Math.round(words / 230))}
+  cover={entry.data.cover}
+  coverAlt={entry.data.coverAlt}
+  toc={headings.filter((h) => h.depth === 2)}
+  backHref="/blog"
+>
+  <Content />
+</Reading>

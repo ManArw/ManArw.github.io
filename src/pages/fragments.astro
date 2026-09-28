@@ -1,0 +1,99 @@
+---
+import Base from '../layouts/Base.astro';
+import { getNotes } from '../lib/substack';
+import { site } from '../data/site';
+
+const notes = await getNotes();
+const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+
+<Base title="Fragments" description="Short notes and lines from Manas H Arawalli's Substack Notes.">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow">Fragments · {notes.length} notes</p>
+      <h1>Fragments</h1>
+      <p class="lede">
+        Lines that didn't need a whole essay. Some are mine, some I'm borrowing. All of them first appeared in my{' '}
+        <a href={site.substackNotes} rel="noopener" target="_blank">Substack Notes</a>.
+      </p>
+    </header>
+
+    <ul class="notes" role="list">
+      {
+        notes.map((n, i) => (
+          <li class="reveal" style={`--delay:${(i % 3) * 80}ms`}>
+            <figure>
+              <blockquote>
+                {n.body.split(/\n\s*\n/).map((para) => (
+                  <p>{para}</p>
+                ))}
+              </blockquote>
+              {n.image && <img src={n.image} alt="" loading="lazy" decoding="async" />}
+              <figcaption>
+                <time datetime={n.date}>{fmt.format(new Date(n.date))}</time>
+                <a href={n.url} rel="noopener" target="_blank">
+                  View on Substack<span class="visually-hidden"> (note from {fmt.format(new Date(n.date))})</span>
+                </a>
+              </figcaption>
+            </figure>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .lede a {
+    color: var(--accent);
+  }
+  .notes {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 var(--space-7);
+    columns: 3 18rem;
+    column-gap: var(--space-4);
+  }
+  .notes li {
+    break-inside: avoid;
+    margin-bottom: var(--space-4);
+  }
+  figure {
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  blockquote {
+    margin: 0;
+    font-size: var(--step-1);
+    line-height: 1.45;
+    font-style: italic;
+    white-space: pre-line;
+  }
+  blockquote p + p {
+    margin-top: 0.6em;
+  }
+  figure img {
+    margin-top: var(--space-3);
+    border-radius: 8px;
+    width: 100%;
+  }
+  figcaption {
+    margin-top: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+  figcaption a {
+    color: var(--accent);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+</style>

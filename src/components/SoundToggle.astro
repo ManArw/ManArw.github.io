@@ -1,0 +1,140 @@
+---
+// Ambient mountain wind, synthesised live with the Web Audio API
+// (filtered brown noise with a slow gust LFO), so there's no audio file to load.
+// Always off until the visitor asks for it.
+---
+
+<button class="sound" type="button" aria-pressed="false" data-sound>
+  <svg class="on" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"></path>
+    <path d="M16 9a4 4 0 0 1 0 6"></path>
+    <path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"></path>
+  </svg>
+  <svg class="off" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"></path>
+    <path d="M16.5 9.5l5 5M21.5 9.5l-5 5"></path>
+  </svg>
+  <span class="label">Sound off</span>
+</button>
+
+<style>
+  .sound {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: var(--z-overlay);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 44px;
+    padding: 0 0.95rem 0 0.8rem;
+    border: 1px solid rgba(238, 243, 248, 0.35);
+    border-radius: 999px;
+    background: rgba(10, 18, 32, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #eef3f8;
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--dur-1);
+  }
+  .sound:hover {
+    background: rgba(10, 18, 32, 0.8);
+  }
+  .sound svg {
+    width: 20px;
+    height: 20px;
+  }
+  @media (max-width: 640px) {
+    .sound {
+      width: 44px;
+      padding: 0;
+      justify-content: center;
+    }
+    .label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+  }
+  .sound .on,
+  .sound[aria-pressed='true'] .off {
+    display: none;
+  }
+  .sound[aria-pressed='true'] .on {
+    display: block;
+  }
+</style>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('[data-sound]')!;
+  const label = btn.querySelector('.label')!;
+  let ctx: AudioContext | null = null;
+  let master: GainNode | null = null;
+
+  function build() {
+    ctx = new AudioContext();
+    // Brown noise: integrated white noise, a soft low rumble like wind.
+    const len = ctx.sampleRate * 4;
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+        d[i] = last * 3.2;
+      }
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 520;
+    filter.Q.value = 0.9;
+
+    // Slow gusts: an LFO sweeping the filter cutoff and the level.
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.07;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 320;
+    lfo.connect(lfoDepth).connect(filter.frequency);
+
+    const gust = ctx.createGain();
+    gust.gain.value = 0.8;
+    const gustLfo = ctx.createOscillator();
+    gustLfo.frequency.value = 0.045;
+    const gustDepth = ctx.createGain();
+    gustDepth.gain.value = 0.25;
+    gustLfo.connect(gustDepth).connect(gust.gain);
+
+    master = ctx.createGain();
+    master.gain.value = 0;
+    src.connect(filter).connect(gust).connect(master).connect(ctx.destination);
+    src.start();
+    lfo.start();
+    gustLfo.start();
+  }
+
+  function set(on: boolean) {
+    if (on && !ctx) build();
+    if (!ctx || !master) return;
+    if (on) ctx.resume();
+    const t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(on ? 0.22 : 0, t + (on ? 2.5 : 0.8));
+    if (!on) setTimeout(() => ctx?.state === 'running' && btn.getAttribute('aria-pressed') === 'false' && ctx.suspend(), 900);
+    btn.setAttribute('aria-pressed', String(on));
+    label.textContent = on ? 'Sound on' : 'Sound off';
+  }
+
+  btn.addEventListener('click', () => set(btn.getAttribute('aria-pressed') !== 'true'));
+  window.addEventListener('ambient:on', () => set(true));
+</script>

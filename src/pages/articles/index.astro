@@ -1,0 +1,48 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostList from '../../components/PostList.astro';
+import { getArticles } from '../../lib/substack';
+import { site } from '../../data/site';
+
+const articles = await getArticles();
+const posts = articles.map((a) => ({
+  href: `/articles/${a.slug}`,
+  title: a.title,
+  subtitle: a.subtitle,
+  date: a.date,
+  minutes: a.minutes,
+}));
+---
+
+<Base title="Articles" description="Essays and poems by Manas H Arawalli, first published on Substack.">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow">Articles · {articles.length} essays</p>
+      <h1>Essays & poems</h1>
+      <p class="lede">
+        On identity, love, belonging, and hope. Each one first appeared on{' '}
+        <a href={site.substack} rel="noopener" target="_blank">my Substack</a>, where you can subscribe to get new ones by email.
+      </p>
+      <p class="also">
+        Shorter lines live in <a href="/fragments">Fragments →</a>
+      </p>
+    </header>
+    <div class="list">
+      <PostList posts={posts} />
+    </div>
+  </div>
+</Base>
+
+<style>
+  .lede a,
+  .also a {
+    color: var(--accent);
+  }
+  .also {
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+  }
+  .list {
+    padding-bottom: var(--space-7);
+  }
+</style>

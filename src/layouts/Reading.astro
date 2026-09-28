@@ -1,0 +1,230 @@
+---
+// Shared layout for a single essay or blog post.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import Base from './Base.astro';
+
+interface Props {
+  title: string;
+  subtitle?: string;
+  date: string | Date;
+  minutes?: number;
+  kind: 'Essay' | 'Blog';
+  backHref: string;
+  image?: string | null;
+  cover?: ImageMetadata;
+  coverAlt?: string;
+  toc?: { slug: string; text: string }[];
+  sourceUrl?: string;
+}
+const { title, subtitle, date, minutes, kind, backHref, image, cover, coverAlt = '', toc = [], sourceUrl } = Astro.props;
+const d = new Date(date);
+const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<Base title={title} description={subtitle} image={image} article>
+  <div class="progress" aria-hidden="true"><span data-progress></span></div>
+  <article class="measure">
+    <header class="head">
+      <a class="back" href={backHref}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+        {kind === 'Essay' ? 'All essays' : 'All posts'}
+      </a>
+      <p class="eyebrow">
+        {kind} · <time datetime={d.toISOString()}>{fmt.format(d)}</time>{minutes ? ` · ${minutes} min read` : ''}
+      </p>
+      <h1>{title}</h1>
+      {subtitle && <p class="sub">{subtitle}</p>}
+    </header>
+
+    {
+      cover && (
+        <div class="cover">
+          <Image src={cover} alt={coverAlt} widths={[640, 1024, 1600, 2000]} sizes="(min-width: 1100px) 64rem, 100vw" loading="eager" fetchpriority="high" />
+        </div>
+      )
+    }
+
+    {
+      toc.length > 2 && (
+        <nav class="toc" aria-label="Contents">
+          <details>
+            <summary>Jump to a day</summary>
+            <ol>
+              {toc.map((h) => (
+                <li>
+                  <a href={`#${h.slug}`}>{h.text}</a>
+                </li>
+              ))}
+            </ol>
+          </details>
+        </nav>
+      )
+    }
+
+    <div class="prose">
+      <slot />
+    </div>
+
+    <footer class="end">
+      <p class="fin" aria-hidden="true">✦</p>
+      {
+        sourceUrl && (
+          <p>
+            First published on <a href={sourceUrl} rel="noopener" target="_blank">Substack</a>. Subscribe there to get new essays by
+            email, or leave a comment.
+          </p>
+        )
+      }
+      <a class="btn" href={backHref}>{kind === 'Essay' ? 'Read another essay' : 'More posts'}</a>
+    </footer>
+  </article>
+</Base>
+
+<style>
+  .progress {
+    position: fixed;
+    top: 4rem;
+    left: 0;
+    right: 0;
+    height: 2px;
+    z-index: var(--z-nav);
+    pointer-events: none;
+  }
+  .progress span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transform: scaleX(var(--read, 0));
+    transform-origin: left;
+  }
+  article {
+    padding-block: calc(var(--space-7) + 1rem) var(--space-7);
+  }
+  .head {
+    margin-bottom: var(--space-6);
+  }
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    min-height: 44px;
+    margin-bottom: var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--ink-soft);
+  }
+  .back:hover {
+    color: var(--ink);
+  }
+  .back svg {
+    width: 1.1em;
+    height: 1.1em;
+    transition: transform var(--dur-1);
+  }
+  .back:hover svg {
+    transform: translateX(-3px);
+  }
+  h1 {
+    margin-top: var(--space-3);
+    font-size: var(--step-3);
+    font-weight: 400;
+    overflow-wrap: break-word;
+  }
+  .sub {
+    margin-top: var(--space-3);
+    font-size: var(--step-1);
+    font-style: italic;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  .cover {
+    width: min(100vw - 2rem, 64rem);
+    margin: calc(var(--space-5) * -1) 0 var(--space-5) 50%;
+    transform: translateX(-50%);
+  }
+  .cover :global(img) {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+  .toc {
+    margin-bottom: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    font-family: var(--font-display);
+  }
+  .toc summary {
+    cursor: pointer;
+    padding: var(--space-3) var(--space-4);
+    min-height: 44px;
+    font-weight: 500;
+    list-style-position: inside;
+  }
+  .toc ol {
+    margin: 0;
+    padding: 0 var(--space-4) var(--space-4) calc(var(--space-4) + 1.2em);
+    display: grid;
+    gap: var(--space-2);
+  }
+  .toc a {
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+  .toc a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .prose :global(.steps) {
+    display: inline-block;
+    padding: 0.2em 0.9em;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+  .end {
+    margin-top: var(--space-6);
+    text-align: center;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-4);
+    color: var(--ink-soft);
+  }
+  .end a:not(.btn) {
+    color: var(--accent);
+  }
+  .end .btn {
+    color: var(--ink);
+  }
+  .fin {
+    font-size: 1.2rem;
+    color: var(--accent);
+  }
+</style>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-progress]')!;
+  let ticking = false;
+  const update = () => {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.setProperty('--read', String(max > 0 ? Math.min(1, window.scrollY / max) : 0));
+    ticking = false;
+  };
+  update();
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    },
+    { passive: true },
+  );
+</script>

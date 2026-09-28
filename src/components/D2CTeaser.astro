@@ -1,0 +1,138 @@
+---
+// Teaser for the D2C business while it's still an idea. Update `stage` in
+// site.ts ('idea' → 'build' → 'launch') as it moves along.
+import { d2c } from '../data/site';
+
+const stages = ['idea', 'build', 'launch'] as const;
+const current = stages.indexOf(d2c.stage);
+---
+
+<aside class="teaser" aria-labelledby="d2c-title">
+  <p class="label">Project 01 · Coming eventually</p>
+  <h3 id="d2c-title">{d2c.name}</h3>
+  <p class="blurb">{d2c.blurb}</p>
+
+  <ol class="track" aria-label={`Progress: ${d2c.stage} stage`}>
+    {
+      stages.map((s, i) => (
+        <li class:list={{ done: i < current, current: i === current }} aria-current={i === current ? 'step' : undefined}>
+          <span class="dot" aria-hidden="true" />
+          <span class="step">{s}</span>
+        </li>
+      ))
+    }
+  </ol>
+
+  <a class="notify" href={d2c.notifyHref} rel="noopener" target="_blank">
+    Tell me when it launches
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+  </a>
+</aside>
+
+<style>
+  .teaser {
+    position: relative;
+    margin: var(--space-5) auto 0;
+    max-width: 30rem;
+    padding: var(--space-4) var(--space-4) var(--space-3);
+    border: 1px dashed color-mix(in srgb, currentColor 40%, transparent);
+    border-radius: 16px;
+    text-align: left;
+    background: color-mix(in srgb, currentColor 5%, transparent);
+  }
+  .label {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+  h3 {
+    margin-top: var(--space-2);
+    font-size: var(--step-2);
+    font-weight: 400;
+  }
+  .blurb {
+    margin-top: var(--space-2);
+    font-style: italic;
+    opacity: 0.85;
+  }
+  .track {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: var(--space-4) 0 var(--space-2);
+    padding: 0;
+    position: relative;
+  }
+  .track::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: calc(33% - 6px);
+    height: 1.5px;
+    background: repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 12px);
+    opacity: 0.4;
+  }
+  .track li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    background: transparent;
+    opacity: 0.45;
+  }
+  .done .dot,
+  .current .dot {
+    opacity: 1;
+    background: currentColor;
+  }
+  .current .dot {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent);
+    animation: pulse 2s ease-out infinite;
+  }
+  .step {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    text-transform: capitalize;
+    opacity: 0.6;
+  }
+  .current .step {
+    opacity: 1;
+    font-weight: 600;
+  }
+  .notify {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    min-height: 44px;
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 500;
+  }
+  .notify svg {
+    width: 1em;
+    height: 1em;
+    transition: transform var(--dur-1);
+  }
+  .notify:hover svg {
+    transform: translateX(3px);
+  }
+  @keyframes pulse {
+    to {
+      box-shadow: 0 0 0 10px transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .current .dot {
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,476 @@
+---
+// The household as interactive silhouettes. Each pet is a button:
+//   idle   → slow tail sway + the occasional blink
+//   hover  → faster wag, head tilt (cat: ear twitch)
+//   click  → hop (or zoomies) and a speech bubble from `says` in site.ts
+// Everything takes the surrounding text colour; eyes use --cutout.
+// With reduced motion, pets stay still and only the speech bubbles appear.
+import { family } from '../data/site';
+
+const puppyPose = [
+  { tilt: -8, tail: 'M55 80 C 68 80, 72 70, 68 62' },
+  { tilt: 6, tail: 'M55 82 C 70 84, 74 76, 74 70' },
+  { tilt: -3, tail: 'M55 80 C 66 74, 64 64, 70 58' },
+  { tilt: 10, tail: 'M55 82 C 68 86, 76 80, 72 72' },
+];
+let pupIndex = 0;
+---
+
+<div class="household">
+  <ul class="family" role="list">
+    {
+      family.map((member, i) => {
+        const pose = member.kind === 'puppy' ? puppyPose[pupIndex++ % puppyPose.length] : null;
+        return (
+          <li class:list={['member', member.kind, 'reveal']} style={`--delay:${i * 90}ms; --blink-delay:${(i * 1.7) % 5}s`}>
+            <button
+              type="button"
+              class="pet"
+              data-pet
+              data-name={member.name}
+              data-says={JSON.stringify(member.says)}
+              aria-label={`${member.name}, ${member.note}. Say hello.`}
+            >
+              <span class="bubble" aria-hidden="true" data-bubble />
+              <span class="portrait">
+                <span class="mover" data-mover>
+                  {member.kind === 'cat' && (
+                    <svg viewBox="0 0 100 112" aria-hidden="true">
+                      <path class="tail" d="M66 104 C 88 106, 94 88, 84 78" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" />
+                      <path d="M38 42 C 26 58, 25 92, 31 108 L 69 108 C 75 92, 73 58, 61 42 Z" fill="currentColor" />
+                      <g class="head">
+                        <g class="ears">
+                          <path class="ear-l" d="M36 25 L 37 6 L 49 17 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                          <path class="ear-r" d="M51 17 L 63 6 L 64 25 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        </g>
+                        <circle cx="50" cy="30" r="15" fill="currentColor" />
+                        <g class="eyes">
+                          <ellipse cx="44" cy="29" rx="1.8" ry="2.6" fill="var(--cutout)" />
+                          <ellipse cx="56" cy="29" rx="1.8" ry="2.6" fill="var(--cutout)" />
+                        </g>
+                        <path d="M48.5 35 L 51.5 35 L 50 36.6 Z" fill="var(--cutout)" />
+                      </g>
+                    </svg>
+                  )}
+                  {member.kind === 'dog' && (
+                    <svg viewBox="0 0 120 140" aria-hidden="true">
+                      <path class="tail" d="M84 124 C 102 124, 108 110, 102 98" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" />
+                      <path d="M44 54 C 33 76, 31 110, 35 132 L 85 132 C 89 110, 87 76, 76 54 Z" fill="currentColor" />
+                      <path d="M56 102 L 56 132 M 64 102 L 64 132" stroke="var(--cutout)" stroke-width="1.6" />
+                      <g class="head">
+                        <ellipse cx="60" cy="36" rx="18" ry="17" fill="currentColor" />
+                        <ellipse cx="60" cy="49" rx="10.5" ry="8.5" fill="currentColor" />
+                        <path class="ear-l" d="M45 25 C 33 27, 30 48, 37 58 C 43 52, 45 40, 48 31 Z" fill="currentColor" />
+                        <path class="ear-r" d="M75 25 C 87 27, 90 48, 83 58 C 77 52, 75 40, 72 31 Z" fill="currentColor" />
+                        <g class="eyes">
+                          <circle cx="53" cy="35" r="2" fill="var(--cutout)" />
+                          <circle cx="67" cy="35" r="2" fill="var(--cutout)" />
+                        </g>
+                        <ellipse cx="60" cy="45" rx="3.6" ry="2.6" fill="var(--cutout)" />
+                      </g>
+                    </svg>
+                  )}
+                  {member.kind === 'puppy' && pose && (
+                    <svg viewBox="0 0 80 92" aria-hidden="true">
+                      <path class="tail" d={pose.tail} fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+                      <path d="M28 44 C 19 58, 19 76, 23 88 L 57 88 C 61 76, 61 58, 52 44 Z" fill="currentColor" />
+                      <g class="head">
+                        <g transform={`rotate(${pose.tilt} 40 32)`}>
+                          <circle cx="40" cy="32" r="15" fill="currentColor" />
+                          <ellipse cx="40" cy="41" rx="8" ry="6.5" fill="currentColor" />
+                          <path class="ear-l" d="M27 24 C 18 26, 17 42, 23 48 C 27 43, 28 34, 30 28 Z" fill="currentColor" />
+                          <path class="ear-r" d="M53 24 C 62 26, 63 42, 57 48 C 53 43, 52 34, 50 28 Z" fill="currentColor" />
+                          <g class="eyes">
+                            <circle cx="34.5" cy="31" r="1.8" fill="var(--cutout)" />
+                            <circle cx="45.5" cy="31" r="1.8" fill="var(--cutout)" />
+                          </g>
+                          <ellipse cx="40" cy="38.5" rx="2.8" ry="2" fill="var(--cutout)" />
+                        </g>
+                      </g>
+                    </svg>
+                  )}
+                </span>
+                <span class="shadow" aria-hidden="true" />
+              </span>
+              <span class="name">{member.name}</span>
+              <span class="note">{member.note}</span>
+            </button>
+          </li>
+        );
+      })
+    }
+  </ul>
+  <p class="hint">Go on, say hello. They like visitors.</p>
+  <p class="visually-hidden" aria-live="polite" data-pet-live></p>
+</div>
+
+<style>
+  .household {
+    --cutout: #0a1220;
+  }
+  .family {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--space-5) clamp(0.5rem, 2vw, 2rem);
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+  .member {
+    display: flex;
+    justify-content: center;
+  }
+  .pet {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: var(--space-2) 0;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .pet:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+
+  /* Fixed-height stage so every name sits on the same baseline. */
+  .portrait {
+    position: relative;
+    height: 8.5rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .mover {
+    display: block;
+    position: relative;
+    z-index: 1;
+    transform-origin: 50% 100%;
+  }
+  .shadow {
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    width: 70%;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    filter: blur(3px);
+    transform: translateX(-50%);
+    transition: transform var(--dur-2) var(--ease-out), opacity var(--dur-2);
+  }
+  svg {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  .cat svg {
+    width: 5.2rem;
+  }
+  .dog svg {
+    width: 6.6rem;
+  }
+  .puppy svg {
+    width: 4.2rem;
+  }
+
+  /* Parts pivot from their joints. */
+  .tail,
+  .head,
+  .ears path,
+  .ear-l,
+  .ear-r,
+  .eyes {
+    transform-box: fill-box;
+  }
+  .tail {
+    transform-origin: 0% 100%;
+  }
+  .head {
+    transform-origin: 50% 90%;
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+  .eyes {
+    transform-origin: 50% 50%;
+    animation: blink 5.5s infinite var(--blink-delay, 0s);
+  }
+  .ear-l {
+    transform-origin: 70% 90%;
+  }
+  .ear-r {
+    transform-origin: 30% 90%;
+  }
+
+  /* Idle */
+  .puppy .tail,
+  .dog .tail {
+    animation: wag 1.6s ease-in-out infinite alternate;
+  }
+  .cat .tail {
+    animation: sway 3.2s ease-in-out infinite alternate;
+  }
+
+  /* Hover / focus */
+  .pet:hover .tail,
+  .pet:focus-visible .tail {
+    animation-duration: 0.28s;
+  }
+  .cat .pet:hover .tail,
+  .cat .pet:focus-visible .tail {
+    animation: flick 0.9s ease-in-out infinite alternate;
+  }
+  .pet:hover .head,
+  .pet:focus-visible .head {
+    transform: rotate(-9deg);
+  }
+  .cat .pet:hover .ear-l,
+  .cat .pet:focus-visible .ear-l {
+    animation: twitch 0.5s ease-in-out 2;
+  }
+  .dog .pet:hover .ear-l,
+  .puppy .pet:hover .ear-l {
+    animation: flop 0.4s ease-in-out 2 alternate;
+  }
+  .pet:hover .shadow {
+    transform: translateX(-50%) scaleX(1.08);
+  }
+
+  /* Click actions (added by script, removed when done) */
+  .pet.hop .mover {
+    animation: hop 0.62s cubic-bezier(0.3, 0.7, 0.4, 1);
+  }
+  .pet.hop .shadow {
+    animation: shadow 0.62s cubic-bezier(0.3, 0.7, 0.4, 1);
+  }
+  .pet.zoom .mover {
+    animation: zoomies 1.1s cubic-bezier(0.5, 0, 0.5, 1);
+  }
+  .pet.stretch .mover {
+    animation: stretch 0.9s var(--ease-out);
+  }
+
+  .name {
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+    font-size: clamp(0.95rem, 0.8rem + 0.5vw, 1.15rem);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .note {
+    font-size: var(--step--1);
+    font-style: italic;
+    opacity: 0.78;
+    line-height: 1.35;
+  }
+
+  .bubble {
+    position: absolute;
+    left: 50%;
+    top: -0.75rem;
+    z-index: 2;
+    width: max-content;
+    max-width: 11rem;
+    padding: 0.45em 0.8em;
+    border-radius: 12px;
+    background: #eef3f8;
+    color: #0a1220;
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.9);
+    transition:
+      opacity var(--dur-1) ease,
+      transform var(--dur-2) var(--ease-out);
+  }
+  .bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 10px;
+    height: 10px;
+    background: inherit;
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 2px;
+  }
+  .bubble.show {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+
+  .hint {
+    margin-top: var(--space-5);
+    text-align: center;
+    font-size: var(--step--1);
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  @keyframes wag {
+    from {
+      transform: rotate(-10deg);
+    }
+    to {
+      transform: rotate(14deg);
+    }
+  }
+  @keyframes sway {
+    from {
+      transform: rotate(-6deg);
+    }
+    to {
+      transform: rotate(8deg);
+    }
+  }
+  @keyframes flick {
+    0% {
+      transform: rotate(-4deg);
+    }
+    70% {
+      transform: rotate(22deg);
+    }
+    100% {
+      transform: rotate(16deg);
+    }
+  }
+  @keyframes twitch {
+    50% {
+      transform: rotate(-18deg);
+    }
+  }
+  @keyframes flop {
+    to {
+      transform: rotate(12deg);
+    }
+  }
+  @keyframes blink {
+    0%,
+    94%,
+    100% {
+      transform: scaleY(1);
+    }
+    97% {
+      transform: scaleY(0.1);
+    }
+  }
+  @keyframes hop {
+    0% {
+      transform: translateY(0) scale(1, 1);
+    }
+    15% {
+      transform: translateY(0) scale(1.08, 0.9);
+    }
+    45% {
+      transform: translateY(-26px) scale(0.95, 1.06);
+    }
+    75% {
+      transform: translateY(0) scale(1.06, 0.94);
+    }
+    100% {
+      transform: translateY(0) scale(1, 1);
+    }
+  }
+  @keyframes shadow {
+    45% {
+      transform: translateX(-50%) scaleX(0.6);
+      opacity: 0.5;
+    }
+  }
+  @keyframes zoomies {
+    0% {
+      transform: translateX(0) rotate(0);
+    }
+    20% {
+      transform: translateX(-18px) rotate(-10deg);
+    }
+    45% {
+      transform: translateX(22px) rotate(12deg) translateY(-8px);
+    }
+    70% {
+      transform: translateX(-10px) rotate(-6deg);
+    }
+    100% {
+      transform: translateX(0) rotate(0);
+    }
+  }
+  @keyframes stretch {
+    30% {
+      transform: scale(1.12, 0.86);
+    }
+    60% {
+      transform: scale(0.96, 1.05);
+    }
+  }
+
+  @media (max-width: 760px) {
+    .family {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .bubble {
+      max-width: calc(100% + 1.25rem);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tail,
+    .eyes,
+    .ears path,
+    .ear-l,
+    .ear-r,
+    .pet .mover,
+    .pet .shadow {
+      animation: none !important;
+    }
+    .pet:hover .head {
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  const live = document.querySelector<HTMLElement>('[data-pet-live]');
+  document.querySelectorAll<HTMLButtonElement>('[data-pet]').forEach((pet) => {
+    const bubble = pet.querySelector<HTMLElement>('[data-bubble]')!;
+    const says: string[] = JSON.parse(pet.dataset.says ?? '[]');
+    const isCat = pet.closest('.cat') !== null;
+    let turn = 0;
+    let hideTimer = 0;
+    let actTimer = 0;
+
+    pet.addEventListener('click', () => {
+      const line = says[turn++ % says.length];
+
+      // Replace any in-flight action cleanly, then start the new one.
+      pet.classList.remove('hop', 'zoom', 'stretch');
+      clearTimeout(actTimer);
+      void pet.offsetWidth; // restart the CSS animation
+      const action = line.includes('zoomies') ? 'zoom' : isCat ? 'stretch' : 'hop';
+      pet.classList.add(action);
+      actTimer = window.setTimeout(() => pet.classList.remove(action), 1200);
+
+      bubble.textContent = line;
+      bubble.classList.add('show');
+      clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => bubble.classList.remove('show'), 2400);
+
+      if (live) live.textContent = `${pet.dataset.name}: ${line}`;
+    });
+  });
+</script>

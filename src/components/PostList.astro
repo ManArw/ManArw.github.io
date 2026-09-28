@@ -1,0 +1,107 @@
+---
+// A quiet, typographic list of posts: date, title, subtitle, reading time.
+export type PostItem = {
+  href: string;
+  title: string;
+  subtitle?: string;
+  date: string | Date;
+  minutes?: number;
+};
+
+interface Props {
+  posts: PostItem[];
+}
+const { posts } = Astro.props;
+const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+
+<ol class="posts" role="list">
+  {
+    posts.map((p, i) => {
+      const d = new Date(p.date);
+      return (
+        <li class="reveal" style={`--delay:${Math.min(i, 6) * 60}ms`}>
+          <a href={p.href}>
+            <time datetime={d.toISOString()}>{fmt.format(d)}</time>
+            <span class="body">
+              <span class="title">{p.title}</span>
+              {p.subtitle && <span class="sub">{p.subtitle}</span>}
+            </span>
+            {p.minutes && <span class="mins">{p.minutes} min</span>}
+          </a>
+        </li>
+      );
+    })
+  }
+</ol>
+
+<style>
+  .posts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+  li {
+    border-bottom: 1px solid var(--line);
+  }
+  a {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr auto;
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+    padding-block: var(--space-4);
+    text-decoration: none;
+    transition: background-color var(--dur-1);
+  }
+  time,
+  .mins {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+  .title {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    line-height: 1.2;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size var(--dur-2) var(--ease-out);
+    width: fit-content;
+    overflow-wrap: anywhere;
+  }
+  a:hover .title,
+  a:focus-visible .title {
+    background-size: 100% 1.5px;
+  }
+  .sub {
+    font-style: italic;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  @media (max-width: 640px) {
+    a {
+      grid-template-columns: 1fr auto;
+    }
+    time {
+      grid-column: 1;
+    }
+    .mins {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .body {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

@@ -1,0 +1,87 @@
+---
+import '@fontsource-variable/josefin-sans';
+import '@fontsource-variable/newsreader';
+import '@fontsource-variable/newsreader/wght-italic.css';
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { site, analytics } from '../data/site';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string | null;
+  overlayNav?: boolean;
+  article?: boolean;
+}
+const { title, description = site.description, image, overlayNav = false, article = false } = Astro.props;
+const fullTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.tagline}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+// Every page has a generated preview card at /og/<path>.png (see src/pages/og).
+const pagePath = Astro.url.pathname.replace(/^\/|\/$/g, '').replace(/\.html$/, '') || 'home';
+const ogImage = new URL(image ?? `/og/${pagePath}.png`, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#f3f6f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a1220" media="(prefers-color-scheme: dark)" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={title ?? site.name} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title ?? site.name} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title ?? site.name} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+    </script>
+    {
+      analytics.goatcounter && (
+        <script is:inline async data-goatcounter={`https://${analytics.goatcounter}.goatcounter.com/count`} src="https://gc.zgo.at/count.js" />
+      )
+    }
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Nav overlay={overlayNav} />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      // Reveal-on-scroll for anything marked .reveal (see global.css).
+      const els = document.querySelectorAll<HTMLElement>('.reveal');
+      if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        els.forEach((el) => el.classList.add('is-in'));
+      } else {
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) {
+                e.target.classList.add('is-in');
+                io.unobserve(e.target);
+              }
+            }
+          },
+          { rootMargin: '0px 0px -12% 0px' },
+        );
+        els.forEach((el) => io.observe(el));
+      }
+    </script>
+  </body>
+</html>
