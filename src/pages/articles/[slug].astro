@@ -1,23 +1,14 @@
 ---
 import Reading from '../../layouts/Reading.astro';
-import { getArticles, type Article } from '../../lib/substack';
+import { getEssays, type Piece } from '../../lib/content';
 
 export async function getStaticPaths() {
-  const articles = await getArticles();
-  return articles.map((a) => ({ params: { slug: a.slug }, props: { article: a } }));
+  return (await getEssays()).map((piece) => ({ params: { slug: piece.slug }, props: { piece } }));
 }
 
-const { article } = Astro.props as { article: Article };
+const { piece } = Astro.props as { piece: Piece };
 ---
 
-<Reading
-  kind="Essay"
-  title={article.title}
-  subtitle={article.subtitle}
-  date={article.date}
-  minutes={article.minutes}
-  backHref="/articles"
-  sourceUrl={article.url}
->
-  <Fragment set:html={article.html} />
+<Reading piece={piece}>
+  <Fragment set:html={piece.html} />
 </Reading>

@@ -1,9 +1,10 @@
-// Builds a link-preview image for every page: /og/<page path>.png
-// (the home page is /og/home.png). Base.astro points og:image at these.
+// Builds a link-preview image for every page: /og/<page path>.jpg
+// (the home page is /og/home.jpg). Base.astro points og:image at these.
+// Pieces come from the content model, so new essays get cards automatically,
+// on top of their own cover photo when they have one.
 import type { APIRoute, GetStaticPaths } from 'astro';
-import { getCollection } from 'astro:content';
 import { renderCard, type Card } from '../../lib/og';
-import { getArticles } from '../../lib/substack';
+import { getPieces } from '../../lib/content';
 import { site } from '../../data/site';
 
 const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -17,24 +18,19 @@ export const getStaticPaths: GetStaticPaths = async () => {
     now: { title: "What I'm up to", subtitle: 'Building a D2C business, and figuring out my purpose.', kicker: 'Now', photo: 'src/assets/japan/cairn.jpg' },
     fragments: { title: 'Fragments', subtitle: "Lines that didn't need a whole essay.", kicker: 'Notes' },
     '404': { title: 'Lost in the clouds.', kicker: '404' },
+    random: { title: 'Somewhere at random', kicker: 'Random' },
   };
 
-  for (const a of await getArticles()) {
-    cards[`articles/${a.slug}`] = {
-      title: a.title,
-      subtitle: a.subtitle,
-      kicker: `Essay · ${fmt.format(new Date(a.date))}`,
-    };
-  }
-
-  for (const e of await getCollection('blog', ({ data }) => !data.draft)) {
-    // Use the post's own cover photo as the card background when it has one.
-    const fsPath = (e.data.cover as { fsPath?: string } | undefined)?.fsPath;
-    cards[`blog/${e.id}`] = {
-      title: e.data.title,
-      subtitle: e.data.summary,
-      kicker: `${e.data.featured ? 'Travelogue' : 'Blog'} · ${fmt.format(e.data.date)}`,
-      photo: fsPath,
+  for (const p of await getPieces()) {
+    // A post's own cover photo, or the essay's Substack cover, behind the title.
+    const photo =
+      typeof p.cover === 'string' ? p.cover : (p.cover as { fsPath?: string } | undefined)?.fsPath;
+    const label = p.kind === 'essay' ? 'Essay' : p.entry?.data.featured ? 'Travelogue' : 'Blog';
+    cards[p.href.slice(1)] = {
+      title: p.title,
+      subtitle: p.excerpt,
+      kicker: `${label} · ${fmt.format(p.date)} · ${p.minutes} min read`,
+      photo,
     };
   }
 
@@ -42,6 +38,6 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 export const GET: APIRoute = async ({ props }) => {
-  const png = await renderCard((props as { card: Card }).card);
-  return new Response(new Uint8Array(png), { headers: { 'Content-Type': 'image/png' } });
+  const jpg = await renderCard((props as { card: Card }).card);
+  return new Response(new Uint8Array(jpg), { headers: { 'Content-Type': 'image/jpeg' } });
 };

@@ -1,5 +1,11 @@
-// Parses a Substack RSS feed into clean article objects.
-// Plain .mjs so both the Astro build and scripts/sync-substack.mjs can use it.
+// Turns Substack's feeds into plain records for src/data/*-snapshot.json.
+// Plain .mjs so scripts/sync-substack.mjs can run it under Node without a build.
+//
+// Sources (all public, no keys):
+//   RSS feed      /feed                   → title, subtitle, date, cover, full HTML
+//   Archive API   /api/v1/archive         → stable post id, tags, voiceover/podcast audio
+//   Notes API     /api/v1/reader/feed/... → Substack Notes (not in RSS at all)
+// The two APIs are unofficial, so everything built on them is optional.
 import { XMLParser } from 'fast-xml-parser';
 import sanitizeHtml from 'sanitize-html';
 
@@ -24,9 +30,12 @@ export function cleanHtml(html) {
     allowedSchemes: ['http', 'https', 'mailto'],
     exclusiveFilter: (frame) => hasDropClass(frame.attribs) || ['button', 'svg'].includes(frame.tag),
     transformTags: {
-      // Unwrap the link Substack puts around every image (it just opens the full-size file).
+      // The link Substack puts around every image (it just opens the full-size
+      // file) loses its href here and is unwrapped below. Renaming it to a
+      // disallowed tag instead desyncs sanitize-html's tag stack, so later
+      // closing tags come out wrong (</strong> turned into </span>).
       a: (tagName, attribs) => {
-        if ((attribs.class ?? '').includes('image-link')) return { tagName: 'span', attribs: {} };
+        if ((attribs.class ?? '').includes('image-link')) return { tagName, attribs: {} };
         const external = /^https?:/.test(attribs.href ?? '');
         return {
           tagName,
@@ -39,8 +48,14 @@ export function cleanHtml(html) {
       }),
     },
   });
-  // Substack uses empty paragraphs as spacers.
-  return out.replace(/<p>\s*<\/p>/g, '').trim();
+  return (
+    out
+      // Unwrap the href-less image links (every real link keeps its href).
+      .replace(/<a>([\s\S]*?)<\/a>/g, '$1')
+      // Substack uses empty paragraphs as spacers.
+      .replace(/<p>\s*<\/p>/g, '')
+      .trim()
+  );
 }
 
 function text(v) {
@@ -68,50 +83,17 @@ function decodeEntities(s) {
     .replace(/&amp;/g, '&');
 }
 
-// Substack Notes aren't in the RSS feed. They come from Substack's public
-// profile API (unofficial, so callers must handle failure gracefully).
-export async function fetchNotes(userId, handle, maxPages = 10) {
-  const notes = [];
-  let cursor = null;
-  for (let page = 0; page < maxPages; page++) {
-    const url = new URL(`https://substack.com/api/v1/reader/feed/profile/${userId}`);
-    url.searchParams.append('types[]', 'note');
-    if (cursor) url.searchParams.set('cursor', cursor);
-    const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (personal-site build)' } });
-    if (!res.ok) throw new Error(`Notes request failed: HTTP ${res.status}`);
-    const data = await res.json();
-    for (const it of data.items ?? []) {
-      const c = it.comment;
-      // Only top-level notes written by this user (skip replies and restacks).
-      if (!c || it.type !== 'comment' || c.user_id !== userId || c.ancestor_path) continue;
-      const body = (c.body ?? '').trim();
-      if (!body) continue;
-      notes.push({
-        id: String(c.id),
-        date: new Date(c.date).toISOString(),
-        body,
-        url: `https://substack.com/@${handle}/note/c-${c.id}`,
-        image: (c.attachments ?? []).find((a) => a.type === 'image')?.imageUrl ?? null,
-        likes: c.reaction_count ?? 0,
-      });
-    }
-    cursor = data.nextCursor;
-    if (!cursor || !(data.items ?? []).length) break;
-  }
-  return notes.sort((a, b) => b.date.localeCompare(a.date));
-}
-
+/** RSS → essays. Throws if the document isn't a usable feed (e.g. a bot-challenge page). */
 export function parseFeed(xml) {
   const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', cdataPropName: false });
   const doc = parser.parse(xml);
-  let items = doc?.rss?.channel?.item ?? [];
+  if (!doc?.rss?.channel) throw new Error('response is not an RSS feed');
+  let items = doc.rss.channel.item ?? [];
   if (!Array.isArray(items)) items = [items];
 
   return items
     .map((it) => {
       const url = text(it.link);
-      const html = cleanHtml(text(it['content:encoded']));
-      const words = sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} }).split(/\s+/).filter(Boolean).length;
       return {
         slug: slugFromLink(url),
         title: decodeEntities(text(it.title).trim()),
@@ -119,10 +101,55 @@ export function parseFeed(xml) {
         date: new Date(text(it.pubDate)).toISOString(),
         url,
         cover: it.enclosure?.['@_url'] ?? null,
-        minutes: Math.max(1, Math.round(words / 230)),
-        html,
+        html: cleanHtml(text(it['content:encoded'])),
       };
     })
-    .filter((p) => p.slug && p.title)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .filter((p) => p.slug && p.title);
+}
+
+/** Archive API page → metadata keyed by slug: stable id, tags, audio. */
+export function parseArchive(posts, base) {
+  if (!Array.isArray(posts)) throw new Error('archive response is not a list');
+  const meta = new Map();
+  for (const p of posts) {
+    if (!p?.slug || !p?.id) continue;
+    let audio = null;
+    if (p.podcast_url) {
+      audio = { url: p.podcast_url, duration: p.podcast_duration ?? null, source: 'substack-podcast' };
+    } else if (p.has_voiceover && p.voiceover_upload_id) {
+      audio = {
+        url: `${base}/api/v1/audio/upload/${p.voiceover_upload_id}/src`,
+        duration: p.voiceoverUpload?.duration ?? null,
+        source: 'substack-voiceover',
+      };
+    }
+    meta.set(p.slug, {
+      id: String(p.id),
+      tags: (p.postTags ?? []).filter((t) => !t.hidden).map((t) => String(t.name).toLowerCase()),
+      audio,
+    });
+  }
+  return meta;
+}
+
+/** One page of the Notes API → this user's own top-level notes. */
+export function parseNotesPage(data, userId, handle) {
+  if (!data || !Array.isArray(data.items)) throw new Error('notes response has no items');
+  const notes = [];
+  for (const it of data.items) {
+    const c = it.comment;
+    // Only top-level notes written by this user (skip replies and restacks).
+    if (!c || it.type !== 'comment' || c.user_id !== userId || c.ancestor_path) continue;
+    const body = (c.body ?? '').trim();
+    if (!body) continue;
+    notes.push({
+      id: String(c.id),
+      date: new Date(c.date).toISOString(),
+      body,
+      url: `https://substack.com/@${handle}/note/c-${c.id}`,
+      image: (c.attachments ?? []).find((a) => a.type === 'image')?.imageUrl ?? null,
+      likes: c.reaction_count ?? 0,
+    });
+  }
+  return { notes, next: data.nextCursor ?? null, empty: !data.items.length };
 }

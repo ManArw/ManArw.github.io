@@ -2,19 +2,82 @@
 import Base from '../layouts/Base.astro';
 ---
 
-<Base title="Lost in the clouds">
-  <div class="measure">
-    <header class="page-head">
-      <p class="eyebrow">404</p>
-      <h1>Lost in the clouds.</h1>
-      <p class="lede">This page doesn't exist, or it wandered off. The summit is this way.</p>
-    </header>
-    <p class="back"><a class="btn" href="/">Back home</a></p>
+<Base title="Lost in the clouds" description="This page doesn't exist, or it wandered off." noindex>
+  <div class="measure lost">
+    <svg class="peak" viewBox="0 0 420 200" aria-hidden="true" fill="none">
+      <path d="M20 182 L 176 52 Q 210 26 244 52 L 400 182" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"></path>
+      <path d="M150 74 L 176 52 Q 210 26 244 52 L 270 74 L 252 88 L 236 76 L 220 94 L 204 76 L 188 90 L 172 78 Z" fill="currentColor" opacity=".5"></path>
+      <g class="cloud" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-opacity=".3">
+        <path d="M96 120 q14 -22 38 -12 q12 -20 36 -10 q22 -8 30 12 q24 0 22 18 H96 q-18 0 0 -8 z"></path>
+        <path d="M212 104 q12 -18 32 -10 q14 -16 34 -6 q22 -4 26 14 q20 2 16 16 H210 q-14 -2 2 -14 z"></path>
+      </g>
+    </svg>
+    <p class="eyebrow">404</p>
+    <h1>Lost in the clouds.</h1>
+    <p class="lede">
+      Whatever was here has wandered off into the weather, or it was never here at all. The mountain is still around, though.
+    </p>
+    <ul class="ways" role="list">
+      <li><a class="btn" href="/">Back to the summit</a></li>
+      <li><a href="/articles">Browse the essays</a></li>
+      <li><a href="/random" data-random>Read something at random</a></li>
+    </ul>
   </div>
 </Base>
 
 <style>
-  .back {
-    padding-bottom: var(--space-7);
+  .lost {
+    padding-block: calc(var(--space-7) + 1rem) var(--space-7);
+    text-align: center;
+  }
+  .peak {
+    width: min(100%, 22rem);
+    margin: 0 auto var(--space-4);
+    color: var(--ink-soft);
+  }
+  .cloud {
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  @keyframes drift {
+    to {
+      transform: translateX(18px);
+    }
+  }
+  h1 {
+    margin-top: var(--space-2);
+    font-size: var(--step-4);
+    font-weight: 300;
+  }
+  .lede {
+    margin: var(--space-4) auto 0;
+    max-width: 30rem;
+    font-size: var(--step-1);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .ways {
+    list-style: none;
+    margin: var(--space-5) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    font-family: var(--font-display);
+  }
+  .ways a:not(.btn) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--ink-soft);
+  }
+  .ways a:not(.btn):hover {
+    color: var(--ink);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cloud {
+      animation: none;
+    }
   }
 </style>

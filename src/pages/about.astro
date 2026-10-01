@@ -19,10 +19,10 @@ import { site, education, experience, projects, skills } from '../data/site';
         <dl class="facts reveal">
           <div><dt>Based in</dt><dd>{site.location}</dd></div>
           <div><dt>Studying</dt><dd>B.E., JSS STU · 2028</dd></div>
-          <div><dt>Writing</dt><dd><a href={site.substack} rel="noopener" target="_blank">manas1211.substack.com</a></dd></div>
+          <div><dt>Writing</dt><dd><a href={site.substack} rel="noopener" target="_blank">manas1211<wbr />.substack.com</a></dd></div>
           <div><dt>Photos</dt><dd><a href={site.instagram} rel="noopener" target="_blank">Instagram {site.instagramHandle}</a></dd></div>
           <div><dt>Elsewhere</dt><dd><a href={site.linkedin} rel="noopener" target="_blank">LinkedIn</a> · <a href={site.github} rel="noopener" target="_blank">GitHub</a></dd></div>
-          <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+          <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email.split('@')[0]}<wbr />@{site.email.split('@')[1]}</a></dd></div>
         </dl>
       </aside>
 
@@ -156,7 +156,7 @@ import { site, education, experience, projects, skills } from '../data/site';
   }
   .facts dd {
     margin: 0.15rem 0 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
   .facts a,
   .lede a {

@@ -1,0 +1,29 @@
+---
+// Fallback for "Read something random" links when the click handler in
+// Base.astro doesn't run: picks a piece and goes there straight away.
+import Base from '../layouts/Base.astro';
+import { getPieces } from '../lib/content';
+
+const hrefs = (await getPieces()).map((p) => p.href);
+---
+
+<Base title="Somewhere at random" noindex>
+  <div class="measure">
+    <header class="page-head">
+      <p class="eyebrow">Random</p>
+      <h1>Picking something…</h1>
+      <p class="lede">If nothing happens, <a href="/articles">browse the essays</a> instead.</p>
+    </header>
+  </div>
+  <script is:inline define:vars={{ hrefs }}>
+    const ref = document.referrer ? new URL(document.referrer).pathname.replace(/\/$/, '') : '';
+    const pool = hrefs.filter((h) => h !== ref);
+    location.replace(pool[Math.floor(Math.random() * pool.length)] || '/articles');
+  </script>
+</Base>
+
+<style>
+  .lede a {
+    color: var(--accent);
+  }
+</style>

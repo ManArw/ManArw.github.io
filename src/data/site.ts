@@ -1,4 +1,5 @@
 // Everything personal on the site lives here, so edits never touch layout code.
+import { API_BASE, SUBSTACK } from './endpoints.mjs';
 
 export const site = {
   // Change this (and `site` in astro.config.mjs) when you add a custom domain.
@@ -11,11 +12,10 @@ export const site = {
     'Essays, poems, and notes by Manas H Arawalli: engineering student, editor, and founder-in-progress from Mysore.',
   location: 'Mysore, Karnataka',
   email: 'manasarawalli@gmail.com',
-  substack: 'https://manas1211.substack.com',
-  substackFeed: 'https://manas1211.substack.com/feed',
-  substackHandle: 'manas1211',
-  substackUserId: 497323139,
-  substackNotes: 'https://substack.com/@manas1211/notes',
+  substack: SUBSTACK.base,
+  substackNotes: `https://substack.com/@${SUBSTACK.handle}/notes`,
+  // The site's Cloudflare Worker (reactions + Substack relay). See worker/.
+  api: API_BASE,
   instagram: 'https://www.instagram.com/man_arw12/',
   instagramHandle: '@man_arw12',
   linkedin: 'https://www.linkedin.com/in/manas-h-arawalli',
@@ -29,12 +29,13 @@ export const socials = [
   { label: 'GitHub', href: site.github },
 ];
 
+// `also` marks the item as current on related pages (Fragments sits with the Blog).
 export const nav = [
-  { href: '/about', label: 'About' },
-  { href: '/articles', label: 'Articles' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/now', label: 'Now' },
-  { href: '/#contact', label: 'Contact' },
+  { href: '/about', label: 'About', also: [] },
+  { href: '/articles', label: 'Articles', also: [] },
+  { href: '/blog', label: 'Blog', also: ['/fragments'] },
+  { href: '/now', label: 'Now', also: [] },
+  { href: '/#contact', label: 'Contact', also: [] },
 ];
 
 // The household, shown on the home page. `kind` picks the illustration.
@@ -93,31 +94,50 @@ export const analytics = {
   goatcounter: 'manarw',
 };
 
-// "Now" page (nownownow.com style). Update whenever life moves.
+// "Now" page (nownownow.com style). Update whenever life moves: change
+// `updated`, then edit, add or delete items. `label` is the small
+// "Currently …" line above each title.
 export const now = {
-  updated: '2026-09-28',
+  updated: '2026-10-01',
   items: [
     {
-      title: 'Building a D2C business',
+      label: 'Building',
+      title: 'A D2C business',
       body: 'Still in the ideation phase: working out the product, the story, and who it’s really for. More when there’s something to show.',
+      teaser: true,
     },
     {
-      title: 'Trying to figure out what my purpose is',
+      label: 'Thinking about',
+      title: 'What my purpose is',
       body: 'Not in a hurry, not standing still. Most of the essays are a record of this search.',
     },
     {
-      title: 'Vice President, VentureX SJCE',
+      label: 'Leading',
+      title: 'VentureX SJCE, as Vice President',
       body: 'Steering the brand narrative and flagship-event communication for a 100+ student entrepreneurship community.',
     },
     {
-      title: 'Writing on Substack',
+      label: 'Writing',
+      title: 'Essays on Substack',
       body: 'Essays and poems about identity, love, belonging, and hope, published most weeks.',
     },
     {
-      title: 'Studying',
+      label: 'Learning',
+      title: 'Engineering, and Japanese',
       body: 'B.E. at JSS Science and Technology University, and slowly climbing Japanese.',
     },
-  ],
+    // Uncomment and fill in when you want them on the page:
+    // { label: 'Reading', title: 'Book title, by Author', body: 'One line on why.' },
+    // { label: 'Listening to', title: 'Album or podcast', body: 'One line on why.' },
+    // { label: 'Planning', title: 'Something ahead', body: 'One line on what and when.' },
+  ] as { label: string; title: string; body: string; teaser?: boolean }[],
+};
+
+// Pre-recorded narration for a piece, by slug. Put the file in public/audio/
+// and add a line here; "Listen" then plays it instead of the browser voice.
+// (Blog posts can set `audio:` in their front matter instead.)
+export const audioFiles: Record<string, { url: string; duration?: number }> = {
+  // 'the-evidence': { url: '/audio/the-evidence.mp3', duration: 241 },
 };
 
 export const education = [

@@ -1,5 +1,7 @@
 // Renders 1200×630 link-preview cards (the image WhatsApp, LinkedIn, X, etc.
-// show when someone shares a link). Satori lays out the card, resvg turns it into a PNG.
+// show when someone shares a link). Satori lays out the card, resvg renders
+// it, and it's saved as a JPEG: WhatsApp skips preview images much over
+// ~300 KB, which a photo PNG easily is.
 import { readFile } from 'node:fs/promises';
 import satori from 'satori';
 import { Resvg } from '@resvg/resvg-js';
@@ -10,7 +12,7 @@ export type Card = {
   title: string;
   subtitle?: string;
   kicker?: string;
-  /** Path to a local photo (relative to the project root) used as the background. */
+  /** Background photo: a local path (relative to the project root) or an image URL. */
   photo?: string;
 };
 
@@ -33,16 +35,31 @@ function loadFonts() {
   return fonts;
 }
 
+async function load(path: string): Promise<Buffer> {
+  if (!/^https?:/.test(path)) return readFile(path);
+  const res = await fetch(path, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
 const photos = new Map<string, Promise<string>>();
-function photoData(path: string) {
+function photoData(path: string): Promise<string> {
   if (!photos.has(path)) {
     photos.set(
       path,
-      sharp(path)
-        .resize(W, H, { fit: 'cover', position: 'attention' })
-        .jpeg({ quality: 78 })
-        .toBuffer()
-        .then((b) => `data:image/jpeg;base64,${b.toString('base64')}`),
+      load(path)
+        .then((buf) => {
+          const img = sharp(buf).resize(W, H, { fit: 'cover', position: 'attention' });
+          // Substack covers often carry their own lettering; soften them so the title reads.
+          return (/^https?:/.test(path) ? img.blur(3) : img).jpeg({ quality: 78 }).toBuffer();
+        })
+        .then((b) => `data:image/jpeg;base64,${b.toString('base64')}`)
+        .catch((err) => {
+          // A cover that can't be fetched just means the default photo.
+          if (path === DEFAULT_PHOTO) throw err;
+          console.warn(`[og] using the default photo instead of ${path}: ${err.message}`);
+          return photoData(DEFAULT_PHOTO);
+        }),
     );
   }
   return photos.get(path)!;
@@ -75,7 +92,9 @@ export async function renderCard({ title, subtitle, kicker, photo = DEFAULT_PHOT
       left: 0,
       width: W,
       height: H,
-      backgroundImage: 'linear-gradient(90deg, rgba(10,18,32,0.94) 0%, rgba(10,18,32,0.82) 45%, rgba(10,18,32,0.25) 100%)',
+      backgroundImage: /^https?:/.test(photo)
+        ? 'linear-gradient(90deg, rgba(10,18,32,0.96) 0%, rgba(10,18,32,0.88) 50%, rgba(10,18,32,0.5) 100%)'
+        : 'linear-gradient(90deg, rgba(10,18,32,0.94) 0%, rgba(10,18,32,0.82) 45%, rgba(10,18,32,0.25) 100%)',
     }),
     h(
       'div',
@@ -104,5 +123,6 @@ export async function renderCard({ title, subtitle, kicker, photo = DEFAULT_PHOT
   );
 
   const svg = await satori(tree as unknown as Parameters<typeof satori>[0], { width: W, height: H, fonts: await loadFonts() });
-  return new Resvg(svg, { fitTo: { mode: 'width', value: W } }).render().asPng();
+  const png = new Resvg(svg, { fitTo: { mode: 'width', value: W } }).render().asPng();
+  return sharp(png).jpeg({ quality: 82, mozjpeg: true }).toBuffer();
 }

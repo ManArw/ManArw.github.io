@@ -3,51 +3,93 @@ import '@fontsource-variable/josefin-sans';
 import '@fontsource-variable/newsreader';
 import '@fontsource-variable/newsreader/wght-italic.css';
 import '../styles/global.css';
+import josefinUrl from '@fontsource-variable/josefin-sans/files/josefin-sans-latin-wght-normal.woff2?url';
+import newsreaderUrl from '@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2?url';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import Search from '../components/Search.astro';
 import { site, analytics } from '../data/site';
 
 interface Props {
   title?: string;
   description?: string;
+  /** Preview image: a path on this site or an absolute URL. Defaults to the generated card. */
   image?: string | null;
+  imageAlt?: string;
   overlayNav?: boolean;
-  article?: boolean;
+  type?: 'website' | 'article';
+  published?: Date;
+  tags?: string[];
+  /** Structured data for this page (schema.org JSON-LD). */
+  jsonLd?: Record<string, unknown>;
+  noindex?: boolean;
 }
-const { title, description = site.description, image, overlayNav = false, article = false } = Astro.props;
+const {
+  title,
+  description = site.description,
+  image,
+  imageAlt,
+  overlayNav = false,
+  type = 'website',
+  published,
+  tags = [],
+  jsonLd,
+  noindex = false,
+} = Astro.props;
+
 const fullTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.tagline}`;
-const canonical = new URL(Astro.url.pathname, Astro.site);
-// Every page has a generated preview card at /og/<path>.png (see src/pages/og).
-const pagePath = Astro.url.pathname.replace(/^\/|\/$/g, '').replace(/\.html$/, '') || 'home';
-const ogImage = new URL(image ?? `/og/${pagePath}.png`, Astro.site).href;
+// Canonical URLs always end in a slash, matching what GitHub Pages serves.
+const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/?$/, '/');
+const canonical = new URL(path, Astro.site).href;
+// Every page has a generated preview card at /og/<path>.jpg (see src/pages/og).
+const pagePath = path.replace(/^\/|\/$/g, '') || 'home';
+const ogImage = new URL(image ?? `/og/${pagePath}.jpg`, Astro.site).href;
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#f3f6f9" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a1220" media="(prefers-color-scheme: dark)" />
+    <link rel="alternate" type="application/rss+xml" title={`${site.name}: writing`} href="/feed.xml" />
+    <link rel="sitemap" href="/sitemap.xml" />
+    <link rel="preload" href={josefinUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={newsreaderUrl} as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0a1220" />
+    <meta name="author" content={site.name} />
+
     <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content="en_IN" />
     <meta property="og:title" content={title ?? site.name} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content={article ? 'article' : 'website'} />
+    <meta property="og:type" content={type} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={title ?? site.name} />
+    <meta property="og:image:alt" content={imageAlt ?? title ?? site.name} />
+    {published && <meta property="article:published_time" content={published.toISOString()} />}
+    {type === 'article' && <meta property="article:author" content={site.name} />}
+    {tags.map((t) => <meta property="article:tag" content={t} />)}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title ?? site.name} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={imageAlt ?? title ?? site.name} />
+    {jsonLd && <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+
     <script is:inline>
       document.documentElement.classList.add('js');
+      // A page-to-page fade that gets skipped (e.g. a quick second click) is
+      // fine; don't report it as an error.
+      const quiet = (e) => e.viewTransition && ['ready', 'finished'].forEach((k) => e.viewTransition[k].catch(() => {}));
+      addEventListener('pageswap', quiet);
+      addEventListener('pagereveal', quiet);
     </script>
     {
       analytics.goatcounter && (
@@ -56,12 +98,14 @@ const ogImage = new URL(image ?? `/og/${pagePath}.png`, Astro.site).href;
     }
   </head>
   <body>
+    <div class="sky" aria-hidden="true"></div>
     <a class="skip-link" href="#main">Skip to content</a>
     <Nav overlay={overlayNav} />
     <main id="main" tabindex="-1">
       <slot />
     </main>
     <Footer />
+    <Search />
 
     <script>
       // Reveal-on-scroll for anything marked .reveal (see global.css).
@@ -82,6 +126,22 @@ const ogImage = new URL(image ?? `/og/${pagePath}.png`, Astro.site).href;
         );
         els.forEach((el) => io.observe(el));
       }
+
+      // "Read something random" links: pick a piece other than this one.
+      // Without JS they go to /random, which does the same thing.
+      document.addEventListener('click', async (e) => {
+        const link = (e.target as Element).closest<HTMLAnchorElement>('a[data-random]');
+        if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        try {
+          const hrefs: string[] = await (await fetch('/random.json')).json();
+          const here = location.pathname.replace(/\/$/, '');
+          const pool = hrefs.filter((h) => h !== here);
+          location.href = pool[Math.floor(Math.random() * pool.length)] ?? '/articles';
+        } catch {
+          location.href = link.href;
+        }
+      });
     </script>
   </body>
 </html>

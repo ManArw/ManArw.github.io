@@ -1,21 +1,14 @@
 ---
-import { getCollection } from 'astro:content';
 import { Image } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
 import PostList from '../../components/PostList.astro';
+import { getPosts, getNotes } from '../../lib/content';
 
-const entries = (await getCollection('blog', ({ data }) => import.meta.env.DEV || !data.draft)).sort(
-  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
-);
-const featured = entries.find((e) => e.data.featured && e.data.cover);
-const posts = entries
-  .filter((e) => e !== featured)
-  .map((e) => ({
-    href: `/blog/${e.id}`,
-    title: e.data.title,
-    subtitle: e.data.summary,
-    date: e.data.date,
-  }));
+const posts = await getPosts();
+const featured = posts.find((p) => p.entry?.data.featured && p.cover && typeof p.cover !== 'string');
+const rest = posts.filter((p) => p !== featured);
+const notes = getNotes();
+const latestNote = notes.find((n) => n.body.length < 220);
 const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
 ---
 
@@ -28,21 +21,38 @@ const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' })
     </header>
 
     {
-      featured && featured.data.cover && (
-        <a class="feature reveal" href={`/blog/${featured.id}`}>
-          <Image src={featured.data.cover} alt={featured.data.coverAlt ?? ''} widths={[640, 1024, 1400]} sizes="(min-width: 1100px) 68rem, 100vw" />
+      featured && featured.cover && typeof featured.cover !== 'string' && (
+        <a class="feature reveal" href={featured.href}>
+          <Image src={featured.cover} alt={featured.coverAlt ?? ''} widths={[640, 1024, 1400]} sizes="(min-width: 1100px) 68rem, 100vw" />
           <span class="feature-body">
-            <span class="eyebrow">Travelogue · {fmt.format(featured.data.date)}</span>
-            <span class="feature-title">{featured.data.title}</span>
-            <span class="feature-sub">{featured.data.summary}</span>
+            <span class="eyebrow">
+              Travelogue · {fmt.format(featured.date)} · {featured.minutes} min read
+            </span>
+            <span class="feature-title">{featured.title}</span>
+            <span class="feature-sub">{featured.excerpt}</span>
           </span>
         </a>
       )
     }
 
     <div class="list">
-      {posts.length ? <PostList posts={posts} /> : !featured && <p class="empty">Nothing here yet. The first post is on its way.</p>}
+      {rest.length ? <PostList pieces={rest} /> : !featured && <p class="empty">Nothing here yet. The first post is on its way.</p>}
     </div>
+
+    {
+      latestNote && (
+        <section class="fragments reveal" aria-labelledby="fragments-title">
+          <p class="eyebrow">Shorter still</p>
+          <h2 id="fragments-title">Fragments</h2>
+          <blockquote>
+            <p>{latestNote.body}</p>
+          </blockquote>
+          <a class="more" href="/fragments">
+            All {notes.length} fragments from my Substack Notes <span aria-hidden="true">→</span>
+          </a>
+        </section>
+      )
+    }
   </div>
 </Base>
 
@@ -96,11 +106,45 @@ const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' })
     color: #d6dfea;
   }
   .list {
-    padding-bottom: var(--space-7);
+    padding-bottom: var(--space-6);
   }
   .empty {
     color: var(--ink-soft);
     font-style: italic;
+  }
+  .fragments {
+    max-width: 36rem;
+    margin: 0 auto;
+    padding-bottom: var(--space-7);
+    text-align: center;
+  }
+  .fragments h2 {
+    margin-top: var(--space-2);
+    font-size: var(--step-2);
+    font-weight: 300;
+  }
+  .fragments blockquote {
+    margin: var(--space-4) 0 0;
+    font-size: var(--step-1);
+    font-style: italic;
+    line-height: 1.45;
+    white-space: pre-line;
+  }
+  .fragments blockquote p::before {
+    content: '“';
+  }
+  .fragments blockquote p::after {
+    content: '”';
+  }
+  .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    min-height: 44px;
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--accent);
   }
   @media (max-width: 640px) {
     .feature :global(img) {

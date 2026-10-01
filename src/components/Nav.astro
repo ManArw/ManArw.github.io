@@ -6,7 +6,8 @@ interface Props {
 }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-const isCurrent = (href: string) => !href.includes('#') && (path === href || path.startsWith(href + '/'));
+const under = (href: string) => path === href || path.startsWith(href + '/');
+const isCurrent = (item: (typeof nav)[number]) => !item.href.includes('#') && [item.href, ...item.also].some(under);
 ---
 
 <header class:list={['site-nav', { overlay }]} data-nav>
@@ -15,7 +16,7 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
       <span aria-hidden="true">M</span><span class="mark-rest" aria-hidden="true">anas</span>
     </a>
 
-    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-btn>
+    <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-btn>
       <span class="visually-hidden">Menu</span>
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
         <path class="l1" d="M4 8h16"></path>
@@ -28,7 +29,7 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
         {
           nav.map((item) => (
             <li>
-              <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+              <a href={item.href} aria-current={isCurrent(item) ? 'page' : undefined}>
                 {item.label}
               </a>
             </li>
@@ -36,6 +37,14 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
         }
       </ul>
     </nav>
+
+    <button class="icon-btn search-btn" type="button" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" title="Search (Ctrl K)">
+      <span class="visually-hidden">Search</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="10.5" cy="10.5" r="6"></circle>
+        <path d="M15 15l5 5"></path>
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -82,6 +91,38 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
   .mark-rest {
     font-weight: 300;
   }
+  /* DOM order is mark, menu button, links, search, so focus follows what you
+     see: links then search on wide screens, menu then its links on phones. */
+  .bar nav {
+    margin-left: auto;
+  }
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color var(--dur-1);
+  }
+  .icon-btn:hover {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+  }
+  .icon-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .search-btn {
+    margin-right: -10px;
+  }
+  /* The hero sky is light, so the focus ring goes dark there. */
+  .site-nav.overlay:not(.scrolled) :focus-visible {
+    outline-color: #0e1a2b;
+  }
   nav ul {
     list-style: none;
     display: flex;
@@ -121,16 +162,14 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
   }
 
   @media (max-width: 640px) {
+    .search-btn {
+      margin-right: 0;
+      margin-left: auto;
+    }
     .menu-btn {
       display: inline-grid;
-      place-items: center;
-      width: 44px;
-      height: 44px;
+      order: 2;
       margin-right: -10px;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
     }
     .menu-btn svg {
       width: 26px;
@@ -151,7 +190,7 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
       top: 4rem;
       left: 0;
       right: 0;
-      background: var(--bg);
+      background: var(--surface-solid);
       color: var(--ink);
       border-bottom: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -203,6 +242,9 @@ const isCurrent = (href: string) => !href.includes('#') && (path === href || pat
       setOpen(false);
       btn.focus();
     }
+  });
+  document.addEventListener('click', (e) => {
+    if (header.classList.contains('open') && !header.contains(e.target as Node)) setOpen(false);
   });
 
   if (header.classList.contains('overlay')) {

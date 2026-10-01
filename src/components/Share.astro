@@ -1,0 +1,126 @@
+---
+// A quiet row of share links. "Copy link" comes first; the phone share sheet
+// appears where the browser supports it. Links use the canonical URL, so the
+// preview card (og:image) is the one generated for this piece.
+interface Props {
+  url: string;
+  title: string;
+}
+const { url, title } = Astro.props;
+const text = `${title}, by Manas H Arawalli`;
+const links = [
+  { label: 'WhatsApp', href: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}` },
+  { label: 'X', href: `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}` },
+  { label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
+];
+---
+
+<div class="share" data-share data-url={url} data-title={text}>
+  <span class="label" id="share-label">Share</span>
+  <ul role="list" aria-labelledby="share-label">
+    <li><button type="button" data-copy>Copy link</button></li>
+    <li hidden data-native-wrap><button type="button" data-native>Share…</button></li>
+    {
+      links.map((l) => (
+        <li>
+          <a href={l.href} rel="noopener" target="_blank">
+            {l.label}
+            <span class="visually-hidden"> (opens in a new tab)</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <span class="visually-hidden" role="status" data-share-status></span>
+</div>
+
+<style>
+  .share {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+  }
+  .label {
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 var(--space-3);
+  }
+  a,
+  button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-soft);
+    font: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.3em;
+    cursor: pointer;
+    transition:
+      color var(--dur-1),
+      text-decoration-color var(--dur-1);
+  }
+  a:hover,
+  button:hover {
+    color: var(--ink);
+    text-decoration-color: currentColor;
+  }
+  [data-copy] {
+    color: var(--accent);
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-share]');
+  if (root) {
+    const url = root.dataset.url!;
+    const status = root.querySelector<HTMLElement>('[data-share-status]')!;
+    const copy = root.querySelector<HTMLButtonElement>('[data-copy]')!;
+
+    copy.addEventListener('click', async () => {
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(url);
+        ok = true;
+      } catch {
+        // Older browsers / non-secure contexts: copy via a temporary field.
+        const field = Object.assign(document.createElement('textarea'), { value: url });
+        field.setAttribute('readonly', '');
+        field.style.cssText = 'position:fixed;opacity:0';
+        document.body.append(field);
+        field.select();
+        ok = document.execCommand('copy');
+        field.remove();
+      }
+      copy.textContent = ok ? 'Link copied' : 'Couldn’t copy';
+      status.textContent = ok ? 'Link copied to your clipboard.' : 'Couldn’t copy the link.';
+      setTimeout(() => (copy.textContent = 'Copy link'), 2200);
+    });
+
+    // The phone's own share sheet (Instagram, Messages, …) where available.
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      root.querySelector<HTMLElement>('[data-native-wrap]')!.hidden = false;
+      root.querySelector('[data-native]')!.addEventListener('click', () =>
+        navigator.share({ title: root.dataset.title, url }).catch(() => {}),
+      );
+    }
+  }
+</script>

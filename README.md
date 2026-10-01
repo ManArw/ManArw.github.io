@@ -1,11 +1,14 @@
-# manas — personal site
+# manas: personal site
 
-Astro static site. Essays sync automatically from Substack; blog posts are Markdown files.
+Astro static site on GitHub Pages. Essays and Notes sync from Substack on their own; blog posts are
+Markdown files. One tiny Cloudflare Worker handles the two things a static site can't: fetching
+Substack from GitHub's servers, and shared reaction counts.
 
 ## Run it locally
 
 ```bash
 npm install
+npm run sync       # pull the latest essays + notes from Substack (optional)
 npm run dev        # http://localhost:4321
 ```
 
@@ -16,12 +19,43 @@ npm run dev        # http://localhost:4321
 | Name, tagline, links, email, pets, now page, CV details | `src/data/site.ts` |
 | Home page story copy | `src/pages/index.astro` |
 | About page intro text | `src/pages/about.astro` |
-| Blog posts | `src/content/blog/*.md` |
+| Blog posts | `src/content/blog/*.md` / `.mdx` |
+| Synced essays and notes (don't edit by hand) | `src/data/substack-snapshot.json`, `src/data/notes-snapshot.json` |
+| The content model every page reads from | `src/lib/content.ts` |
 | Hero photo | `src/assets/fuji.jpg` (replace with a higher-res copy any time, same name) |
 | Japan photos | `src/assets/japan/` · video in `public/media/` |
-| Japan travelogue | `src/content/blog/japan-ten-days.mdx` |
-| Pets' speech bubbles | `family` in `src/data/site.ts` |
-| Colours & fonts | `src/styles/global.css` (top of file) |
+| Reaction labels and emoji | `src/data/reactions.ts` |
+| Colours, fonts, the shared night-sky background | `src/styles/global.css` (top of file) |
+| The Worker (Substack relay + reactions) | `worker/` |
+
+## How new writing reaches the site
+
+```
+Substack ──(Cloudflare Worker relay)──> sync job ──> src/data/*-snapshot.json ──> build ──> GitHub Pages
+```
+
+- **Essays** come from the RSS feed (full text). Substack's archive API adds each post's stable id,
+  tags and any voiceover audio.
+- **Notes** come from Substack's Notes API. They are **not** in RSS at all, and that API is
+  unofficial, so Notes are best-effort: if it fails, the site keeps the notes it already has.
+- **Why the relay:** Substack's Cloudflare protection answers GitHub's servers with a bot challenge
+  (HTTP 403), so the build can't read Substack directly. That's why nothing synced for the first few
+  days after launch. The Worker fetches the same public URLs from Cloudflare's network instead. It only
+  relays three fixed Substack addresses, so it isn't an open proxy.
+- **When:** `.github/workflows/deploy.yml` runs every two hours. If Substack has anything new it commits
+  the snapshots ("Sync Substack") and redeploys; if not, it stops there. To publish right away, go to
+  the repo's **Actions → Deploy to GitHub Pages → Run workflow**.
+- **If Substack is unreachable**, the sync step fails and GitHub emails you. The live site isn't
+  touched: it keeps serving the last good content.
+- Posts you unpublish or rename on Substack disappear from the site on the next sync.
+
+Nothing ever needs editing by hand when you publish on Substack.
+
+### Articles, Blog, Fragments
+
+- **Articles** (`/articles`): finished essays and poems from Substack.
+- **Blog** (`/blog`): the notebook. Longer travel writing and shorter updates, written as files here.
+- **Fragments** (`/fragments`): Substack Notes. Linked from the Blog and Articles pages.
 
 ### Writing a blog post
 
@@ -32,56 +66,79 @@ Create `src/content/blog/my-post.md`:
 title: My post
 date: 2026-10-01
 summary: One line that shows under the title.
+tags: [building, notes]
 draft: false
 ---
 
 Write in Markdown here.
 ```
 
-The file name becomes the URL: `/blog/my-post`. `draft: true` hides it from the live site.
+The file name becomes the URL (`/blog/my-post`). `draft: true` hides it from the live site. If you
+ever rename the file, add `id: my-post` (the old name) to the front matter so its reactions stay
+attached.
 
-### Substack essays
+For photos and video, use `.mdx` and the `Figure` / `Video` components (see `japan-ten-days.mdx`).
+`cover:` adds a header photo; `featured: true` puts the post at the top of the Blog page.
 
-Nothing to do. Every build pulls `https://manas1211.substack.com/feed` and renders each essay at
-`/articles/<slug>` with a link back to Substack. The deploy workflow rebuilds daily, so new posts
-show up within a day (or trigger it manually from the repo's **Actions** tab).
+## Listen to this article
 
-Substack Notes show up on `/fragments` the same way. They come from Substack's public profile API
-(Notes aren't in RSS). That API is unofficial, so if it ever breaks, the site keeps showing the last
-saved notes instead of failing.
+Every piece has a "Listen to this article" player. By default it reads the article body aloud with the
+reader's own browser voice (Chrome, Edge and Safari all have good ones; Edge's "Natural" voices are
+the best). Nothing to pay for, no service involved.
 
-Substack's feed only lists the latest ~20 posts. To keep older ones on the site forever, run
-`npm run sync` now and then and commit `src/data/substack-snapshot.json` and `src/data/notes-snapshot.json`.
+To use a real recording instead (your own voice, or an ElevenLabs export):
 
-### Posts with photos
+1. Put the file in `public/audio/`, e.g. `public/audio/the-evidence.mp3`.
+2. For a Substack essay, add it to `audioFiles` in `src/data/site.ts`:
+   `'the-evidence': { url: '/audio/the-evidence.mp3', duration: 241 }` (duration in seconds).
+   For a blog post, add `audio: { url: /audio/my-post.mp3, duration: 241 }` to its front matter.
 
-Use `.mdx` instead of `.md` and import the `Figure` / `Video` components. See `japan-ten-days.mdx`
-for an example. `cover:` in the front matter adds a header photo; `featured: true` puts the post
-at the top of the Blog page.
+Substack voiceovers are picked up automatically if you ever add them there.
 
-## Deploying to GitHub Pages
+## Reactions
 
-1. Create a public repo named **`ManArw.github.io`** on GitHub.
-2. Push this folder to its `main` branch.
-3. In the repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-4. The site goes live at <https://manarw.github.io>.
+"Did this stay with you?" at the end of each piece. Counts are shared between all readers and stored
+in the Worker's D1 database against each piece's stable id (Substack's post id, or `blog-<file>`), so
+they survive URL changes. No accounts: each browser keeps a random token and can react once per kind
+(clicking again takes it back). No IPs or personal data are stored.
 
-Using a different repo name? Set `base: '/<repo-name>'` in `astro.config.mjs`.
+To see all counts: `cd worker && npx wrangler d1 execute manarw-reactions --remote --command "SELECT piece, reaction, COUNT(*) FROM votes GROUP BY 1, 2"`.
 
-### Visitor counter (GoatCounter)
+## The Worker
 
-1. Sign up at <https://www.goatcounter.com> (free for personal sites, no cookies, no banner needed) and pick a code, e.g. `manas`.
-2. In GoatCounter: **Settings → "Allow adding visitor counts on your website"** → on.
-3. Put the code in `analytics.goatcounter` in `src/data/site.ts` and push.
+`worker/` is a free Cloudflare Worker (account: manasarawalli@gmail.com) at
+`https://manarw-api.manarw-api.workers.dev`. To change and redeploy it:
 
-Stats live at `https://<code>.goatcounter.com`, and the footer shows "N visitors so far".
-Visits from `localhost` aren't counted.
+```bash
+cd worker
+npx wrangler login     # once per computer
+npx wrangler deploy
+```
 
-### Link previews
+## Search, random, feeds
 
-Each page gets a generated share card at `/og/<page>.png` (see `src/lib/og.ts`). They rebuild
-automatically, so new essays get cards too. After going live, test a link at
+- **Search**: the magnifier in the nav, `Ctrl K` / `⌘ K`, or `/`. Covers titles, summaries, tags, full
+  text and fragments, from `/search.json` (only downloaded when someone opens search).
+- **Random**: "read something at random" links go to `/random`.
+- **RSS for this site**: `/feed.xml`. **Sitemap**: `/sitemap.xml`, referenced from `/robots.txt`.
+
+All of these are generated from the same content model, so they never need editing.
+
+## Link previews
+
+Each page gets a generated share card at `/og/<page>.jpg` (see `src/lib/og.ts`). Essays use their own
+Substack cover photo behind the title. They rebuild automatically. Test a link at
 <https://www.opengraph.xyz>.
+
+## Visitor counter (GoatCounter)
+
+Stats live at <https://manarw.goatcounter.com>, and the footer shows "N visitors so far". Visits from
+`localhost` aren't counted.
+
+## Deploying
+
+Pushing to `main` builds and deploys. In the repo, **Settings → Pages → Build and deployment →
+Source** should be **GitHub Actions**.
 
 ### Custom domain
 
@@ -90,5 +147,7 @@ automatically, so new essays get cards too. After going live, test a link at
    - four `A` records for `@` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
    - a `CNAME` record for `www` → `manarw.github.io`
 3. Add a file `public/CNAME` containing just the domain (e.g. `manasarawalli.com`), and set
-   `site: 'https://manasarawalli.com'` in `astro.config.mjs`. Push.
-4. In the repo: Settings → Pages → Custom domain → enter it, then tick **Enforce HTTPS** once it's allowed.
+   `site: 'https://manasarawalli.com'` in `astro.config.mjs` and `url` in `src/data/site.ts`.
+4. Add the new domain to `ALLOWED_ORIGINS` in `worker/wrangler.toml` and redeploy the Worker
+   (otherwise reactions won't load on the new domain).
+5. Push. In the repo: Settings → Pages → Custom domain → enter it, then tick **Enforce HTTPS**.

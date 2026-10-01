@@ -1,34 +1,35 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getNotes } from '../lib/substack';
+import { getNotes } from '../lib/content';
 import { site } from '../data/site';
 
-const notes = await getNotes();
+const notes = getNotes();
 const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 ---
 
-<Base title="Fragments" description="Short notes and lines from Manas H Arawalli's Substack Notes.">
+<Base title="Fragments" description="Short lines and notes by Manas H Arawalli, from his Substack Notes.">
   <div class="wrap">
     <header class="page-head">
       <p class="eyebrow">Fragments · {notes.length} notes</p>
       <h1>Fragments</h1>
       <p class="lede">
         Lines that didn't need a whole essay. Some are mine, some I'm borrowing. All of them first appeared in my{' '}
-        <a href={site.substackNotes} rel="noopener" target="_blank">Substack Notes</a>.
+        <a href={site.substackNotes} rel="noopener" target="_blank">Substack Notes</a>, and new ones arrive here on their own.
       </p>
+      <p class="also"><a href="/blog">← Back to the notebook</a></p>
     </header>
 
     <ul class="notes" role="list">
       {
         notes.map((n, i) => (
-          <li class="reveal" style={`--delay:${(i % 3) * 80}ms`}>
+          <li class="reveal" style={`--delay:${(i % 3) * 80}ms`} id={`note-${n.id}`}>
             <figure>
               <blockquote>
                 {n.body.split(/\n\s*\n/).map((para) => (
                   <p>{para}</p>
                 ))}
               </blockquote>
-              {n.image && <img src={n.image} alt="" loading="lazy" decoding="async" />}
+              {n.image && <img src={n.image} alt="Image attached to this note" loading="lazy" decoding="async" />}
               <figcaption>
                 <time datetime={n.date}>{fmt.format(new Date(n.date))}</time>
                 <a href={n.url} rel="noopener" target="_blank">
@@ -46,6 +47,21 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', y
 <style>
   .lede a {
     color: var(--accent);
+  }
+  .also {
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+  }
+  .also a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--ink-soft);
+  }
+  /* Arriving from search: show which note it was. */
+  .notes li:target figure {
+    border-color: var(--accent);
   }
   .notes {
     list-style: none;

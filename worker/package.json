@@ -1,0 +1,10 @@
+{
+  "name": "manarw-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 execute manarw-reactions --remote --file=schema.sql",
+    "dev": "wrangler dev"
+  }
+}

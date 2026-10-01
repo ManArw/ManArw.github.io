@@ -9,15 +9,30 @@ import fujiDusk from '../assets/japan/fuji-dusk.jpg';
 import fujiTrain from '../assets/japan/fuji-shinkansen.jpg';
 import cairn from '../assets/japan/cairn.jpg';
 import { site, now, socials } from '../data/site';
-import { getArticles, getNotes } from '../lib/substack';
+import { getEssays, getNotes } from '../lib/content';
 
-const articles = (await getArticles()).slice(0, 3);
+const articles = (await getEssays()).slice(0, 3);
 // A short Note to quote on the home page (the most recent one that fits).
-const fragment = (await getNotes()).find((n) => n.body.length < 160 && !n.image);
+const fragment = getNotes().find((n) => n.body.length < 160 && !n.image);
 const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'WebSite', name: site.name, url: `${site.url}/`, description: site.description },
+    {
+      '@type': 'Person',
+      name: site.name,
+      url: `${site.url}/`,
+      email: `mailto:${site.email}`,
+      homeLocation: site.location,
+      sameAs: socials.map((s) => s.href),
+    },
+  ],
+};
 ---
 
-<Base overlayNav>
+<Base overlayNav jsonLd={jsonLd}>
   <div class="stage" data-stage>
     <!-- The photo stays pinned while the story scrolls over it, sinking
          from bright sky into the deep blue at the foot of the mountain. -->
@@ -34,7 +49,7 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', ye
         class="photo"
       />
       <!-- Near the end of the story, day turns to dusk at Kawaguchiko. -->
-      <Image src={fujiDusk} alt="" widths={[960, 1600, 2000]} sizes="100vw" format="webp" quality={80} class="photo photo-dusk" />
+      <Image src={fujiDusk} alt="" widths={[960, 1600, 2000]} sizes="100vw" format="webp" quality={80} fetchpriority="low" class="photo photo-dusk" />
       <div class="dusk"></div>
       <div class="grain"></div>
     </div>
@@ -104,12 +119,12 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', ye
           {
             articles.map((a, i) => (
               <li class="reveal" style={`--delay:${i * 110}ms`}>
-                <a href={`/articles/${a.slug}`}>
+                <a href={a.href}>
                   <span class="meta">
-                    <time datetime={a.date}>{fmt.format(new Date(a.date))}</time> · {a.minutes} min
+                    <time datetime={a.date.toISOString()}>{fmt.format(a.date)}</time> · {a.minutes} min
                   </span>
                   <span class="t">{a.title}</span>
-                  <span class="s">{a.subtitle}</span>
+                  <span class="s">{a.excerpt}</span>
                 </a>
               </li>
             ))
@@ -120,6 +135,7 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', ye
             All essays
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </a>
+          <a class="quiet-link" href="/random" data-random>Not sure where to start? Let the archive choose.</a>
         </p>
       </div>
     </section>

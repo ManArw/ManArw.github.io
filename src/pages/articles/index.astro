@@ -1,46 +1,86 @@
 ---
 import Base from '../../layouts/Base.astro';
 import PostList from '../../components/PostList.astro';
-import { getArticles } from '../../lib/substack';
+import { getEssays } from '../../lib/content';
 import { site } from '../../data/site';
 
-const articles = await getArticles();
-const posts = articles.map((a) => ({
-  href: `/articles/${a.slug}`,
-  title: a.title,
-  subtitle: a.subtitle,
-  date: a.date,
-  minutes: a.minutes,
-}));
+const essays = await getEssays();
 ---
 
-<Base title="Articles" description="Essays and poems by Manas H Arawalli, first published on Substack.">
+<Base title="Articles" description="Essays and poems by Manas H Arawalli on identity, love, belonging, and hope.">
   <div class="wrap">
     <header class="page-head">
-      <p class="eyebrow">Articles · {articles.length} essays</p>
+      <p class="eyebrow">Articles · {essays.length} essays</p>
       <h1>Essays & poems</h1>
       <p class="lede">
-        On identity, love, belonging, and hope. Each one first appeared on{' '}
+        Finished pieces on identity, love, belonging, and hope. Each one first appeared on{' '}
         <a href={site.substack} rel="noopener" target="_blank">my Substack</a>, where you can subscribe to get new ones by email.
       </p>
-      <p class="also">
-        Shorter lines live in <a href="/fragments">Fragments →</a>
-      </p>
+      <ul class="ways" role="list">
+        <li><a href="/fragments">Shorter lines live in Fragments →</a></li>
+        <li><button type="button" class="linkish" data-search-open>Search the archive <kbd data-shortcut>Ctrl K</kbd></button></li>
+        <li><a href="/random" data-random>I don't know what I'm looking for →</a></li>
+      </ul>
     </header>
     <div class="list">
-      <PostList posts={posts} />
+      <PostList pieces={essays} byYear />
     </div>
   </div>
 </Base>
 
 <style>
-  .lede a,
-  .also a {
+  .lede a {
     color: var(--accent);
   }
-  .also {
-    margin-top: var(--space-3);
+  .ways {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
     font-family: var(--font-display);
+    font-size: var(--step--1);
+  }
+  .ways a,
+  .linkish {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-soft);
+    font: inherit;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.3em;
+    cursor: pointer;
+    transition:
+      color var(--dur-1),
+      text-decoration-color var(--dur-1);
+  }
+  .ways a:hover,
+  .linkish:hover {
+    color: var(--ink);
+    text-decoration-color: currentColor;
+  }
+  .ways li:first-child a {
+    color: var(--accent);
+  }
+  kbd {
+    padding: 0.1em 0.45em 0;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font: inherit;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+  }
+  @media (pointer: coarse) {
+    kbd {
+      display: none;
+    }
   }
   .list {
     padding-bottom: var(--space-7);

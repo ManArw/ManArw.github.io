@@ -29,9 +29,10 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', ye
               {String(i + 1).padStart(2, '0')}
             </span>
             <div>
+              <p class="label">Currently {item.label.toLowerCase()}</p>
               <h2>{item.title}</h2>
               <p>{item.body}</p>
-              {i === 0 && <D2CTeaser />}
+              {item.teaser && <D2CTeaser />}
             </div>
           </li>
         ))
@@ -76,13 +77,22 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', ye
     font-family: var(--font-display);
     font-size: var(--step--1);
     color: var(--accent);
-    padding-top: 0.4em;
+    padding-top: 0.15em;
+  }
+  .label {
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
   }
   h2 {
+    margin-top: var(--space-1);
     font-size: var(--step-2);
     font-weight: 400;
   }
-  .now li > div > p {
+  .now li > div > p:not(.label) {
     margin-top: var(--space-2);
     color: var(--ink-soft);
   }

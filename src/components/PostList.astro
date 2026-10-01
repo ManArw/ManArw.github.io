@@ -1,41 +1,71 @@
 ---
-// A quiet, typographic list of posts: date, title, subtitle, reading time.
-export type PostItem = {
-  href: string;
-  title: string;
-  subtitle?: string;
-  date: string | Date;
-  minutes?: number;
-};
+// A quiet, typographic list of pieces: date, title, excerpt, reading time,
+// and (filled in after load) how many people reacted. Optionally grouped by
+// year so it still reads calmly when the archive gets long.
+import { kindLabel, type Piece } from '../lib/content';
+import { site } from '../data/site';
 
 interface Props {
-  posts: PostItem[];
+  pieces: Piece[];
+  byYear?: boolean;
+  showKind?: boolean;
 }
-const { posts } = Astro.props;
+const { pieces, byYear = false, showKind = false } = Astro.props;
 const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const groups: [string | null, Piece[]][] = [];
+for (const p of pieces) {
+  const key = byYear ? String(p.date.getFullYear()) : null;
+  const last = groups.at(-1);
+  if (last && last[0] === key) last[1].push(p);
+  else groups.push([key, [p]]);
+}
 ---
 
-<ol class="posts" role="list">
+<div class="archive" data-reaction-totals={site.api}>
   {
-    posts.map((p, i) => {
-      const d = new Date(p.date);
-      return (
-        <li class="reveal" style={`--delay:${Math.min(i, 6) * 60}ms`}>
-          <a href={p.href}>
-            <time datetime={d.toISOString()}>{fmt.format(d)}</time>
-            <span class="body">
-              <span class="title">{p.title}</span>
-              {p.subtitle && <span class="sub">{p.subtitle}</span>}
-            </span>
-            {p.minutes && <span class="mins">{p.minutes} min</span>}
-          </a>
-        </li>
-      );
-    })
+    groups.map(([year, list]) => (
+      <section class="group" aria-labelledby={year ? `year-${year}` : undefined}>
+        {year && (
+          <h2 class="year" id={`year-${year}`}>
+            {year}
+          </h2>
+        )}
+        <ol class="posts" role="list">
+          {list.map((p, i) => (
+            <li class="reveal" style={`--delay:${Math.min(i, 6) * 60}ms`}>
+              <a href={p.href}>
+                <time datetime={p.date.toISOString()}>{fmt.format(p.date)}</time>
+                <span class="body">
+                  <span class="title">{p.title}</span>
+                  <span class="sub">{p.excerpt}</span>
+                  {p.tags.length > 0 && <span class="tags">{p.tags.slice(0, 4).join(' · ')}</span>}
+                </span>
+                <span class="meta">
+                  {showKind && <span>{kindLabel(p.kind)}</span>}
+                  <span>{p.minutes} min</span>
+                  <span class="hearts" data-total-for={p.id} hidden />
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))
   }
-</ol>
+</div>
 
 <style>
+  .group + .group {
+    margin-top: var(--space-5);
+  }
+  .year {
+    margin-bottom: var(--space-2);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--ink-soft);
+  }
   .posts {
     list-style: none;
     margin: 0;
@@ -52,15 +82,20 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', y
     align-items: baseline;
     padding-block: var(--space-4);
     text-decoration: none;
-    transition: background-color var(--dur-1);
   }
   time,
-  .mins {
+  .meta {
     font-family: var(--font-display);
     font-size: var(--step--1);
     letter-spacing: 0.04em;
     color: var(--ink-soft);
     white-space: nowrap;
+  }
+  .meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
   }
   .body {
     display: flex;
@@ -89,6 +124,15 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', y
     color: var(--ink-soft);
     line-height: 1.45;
   }
+  .tags {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: color-mix(in srgb, var(--accent) 80%, var(--ink-soft));
+  }
+  .hearts::before {
+    content: '♡ ';
+  }
   @media (max-width: 640px) {
     a {
       grid-template-columns: 1fr auto;
@@ -96,12 +140,37 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', y
     time {
       grid-column: 1;
     }
-    .mins {
+    .meta {
       grid-column: 2;
       grid-row: 1;
+      flex-direction: row;
+      gap: var(--space-2);
     }
     .body {
       grid-column: 1 / -1;
     }
   }
 </style>
+
+<script>
+  // Quiet reaction totals next to each piece. One request for the whole list,
+  // after the page has settled; nothing shows if the counter can't be reached.
+  const root = document.querySelector<HTMLElement>('[data-reaction-totals]');
+  const spots = [...document.querySelectorAll<HTMLElement>('[data-total-for]')];
+  if (root && spots.length) {
+    const run = () =>
+      fetch(`${root.dataset.reactionTotals}/reactions?ids=${spots.map((s) => encodeURIComponent(s.dataset.totalFor!)).join(',')}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((d: { counts: Record<string, Record<string, number>> }) => {
+          for (const s of spots) {
+            const total = Object.values(d.counts[s.dataset.totalFor!] ?? {}).reduce((a, b) => a + b, 0);
+            if (total > 0) {
+              s.innerHTML = `${total}<span class="visually-hidden"> ${total === 1 ? 'reaction' : 'reactions'}</span>`;
+              s.hidden = false;
+            }
+          }
+        })
+        .catch(() => {});
+    'requestIdleCallback' in window ? requestIdleCallback(run, { timeout: 2000 }) : setTimeout(run, 600);
+  }
+</script>

@@ -1,0 +1,22 @@
+name = "manarw-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+# Pages allowed to read and post reactions from a browser. Add the custom
+# domain here when the site moves to one.
+ALLOWED_ORIGINS = "https://manarw.github.io,http://localhost:4321,http://127.0.0.1:4321"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "manarw-reactions"
+database_id = "5f273910-cf88-45e4-becb-b85b004b69ae"
+
+[observability]
+enabled = true
+
+# Last good Substack response per relay URL, served when Substack rate-limits.
+[[kv_namespaces]]
+binding = "RELAY_CACHE"
+id = "a7925e2b34f348a8abd1fb3532c01f85"

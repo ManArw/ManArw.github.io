@@ -1,5 +1,6 @@
 ---
 title: Why this site exists
+tags: [this site, writing]
 date: 2026-09-28
 summary: A home for the essays, and a notebook for everything in between.
 ---

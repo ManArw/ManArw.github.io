@@ -1,0 +1,329 @@
+---
+// Site-wide search over /search.json (built from the same content model as
+// everything else). Opens with Ctrl+K / Cmd+K or the nav button. The index
+// is only downloaded the first time someone opens it.
+---
+
+<dialog class="search" aria-labelledby="search-title" data-search>
+  <div class="box">
+    <h2 id="search-title" class="visually-hidden">Search the site</h2>
+    <div class="field">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="10.5" cy="10.5" r="6"></circle>
+        <path d="M15 15l5 5"></path>
+      </svg>
+      <input
+        type="search"
+        placeholder="Search essays, posts, fragments…"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Search"
+        aria-describedby="search-status"
+        data-search-input
+      />
+      <button type="button" class="close" data-search-close>
+        <span aria-hidden="true">Esc</span><span class="visually-hidden">Close search</span>
+      </button>
+    </div>
+    <p id="search-status" class="status" role="status" aria-live="polite" data-search-status></p>
+    <ol class="results" role="list" data-search-results></ol>
+  </div>
+</dialog>
+
+<style>
+  .search {
+    width: min(100% - 2rem, 40rem);
+    max-height: min(80vh, 44rem);
+    margin: 12vh auto auto;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-solid);
+    color: var(--ink);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+  .search::backdrop {
+    background: rgba(5, 10, 18, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .search[open] {
+    animation: drop var(--dur-2) var(--ease-out);
+  }
+  @keyframes drop {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+  .box {
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
+  }
+  .field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+  }
+  .field svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--ink-soft);
+  }
+  input {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-family: var(--font-body);
+    font-size: var(--step-1);
+    font-style: italic;
+  }
+  input:focus {
+    outline: none;
+  }
+  input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .close {
+    flex: none;
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .close:hover {
+    color: var(--ink);
+  }
+  .status {
+    padding: var(--space-3) var(--space-4) 0;
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+  .status:empty {
+    display: none;
+  }
+  .results {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-2);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .results :global(a) {
+    display: grid;
+    gap: 0.2rem;
+    padding: var(--space-3);
+    border-radius: 10px;
+    text-decoration: none;
+    outline-offset: -2px;
+  }
+  .results :global(a:hover),
+  .results :global(a:focus-visible) {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .results :global(.meta) {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .results :global(.t) {
+    font-family: var(--font-display);
+    font-size: var(--step-0);
+    line-height: 1.25;
+  }
+  .results :global(.x) {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .results :global(mark) {
+    background: none;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  @media (max-width: 640px) {
+    .search {
+      margin-top: 4.5rem;
+      max-height: calc(100dvh - 6rem);
+    }
+  }
+</style>
+
+<script>
+  type Item = { t: string; h: string; k: string; d: string; m?: number; g?: string[]; e?: string; x: string };
+
+  const dialog = document.querySelector<HTMLDialogElement>('[data-search]')!;
+  const input = dialog.querySelector<HTMLInputElement>('[data-search-input]')!;
+  const list = dialog.querySelector<HTMLOListElement>('[data-search-results]')!;
+  const status = dialog.querySelector<HTMLElement>('[data-search-status]')!;
+  let index: Promise<Item[]> | null = null;
+  let opener: HTMLElement | null = null;
+
+  const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const fmt = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' });
+
+  function load() {
+    index ??= fetch('/search.json')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d: { items: Item[] }) =>
+        d.items.map((it) => ({ ...it, _t: fold(it.t), _g: fold((it.g ?? []).join(' ')), _e: fold(it.e ?? ''), _x: fold(it.x) })),
+      )
+      .catch((err) => {
+        index = null;
+        throw err;
+      });
+    return index;
+  }
+
+  function highlight(text: string, terms: string[]) {
+    let out = esc(text);
+    for (const t of terms) {
+      if (t.length < 2) continue;
+      out = out.replace(new RegExp(`(${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>');
+    }
+    return out;
+  }
+
+  // A few words either side of the first match in the body.
+  function snippet(it: Item & { _x: string }, terms: string[]) {
+    const at = Math.min(...terms.map((t) => it._x.indexOf(t)).filter((i) => i >= 0));
+    if (!Number.isFinite(at)) return it.e ?? it.x.slice(0, 140);
+    const start = Math.max(0, it.x.lastIndexOf(' ', Math.max(0, at - 60)));
+    const end = it.x.indexOf(' ', Math.min(it.x.length, at + 100));
+    return (start > 0 ? '…' : '') + it.x.slice(start, end < 0 ? undefined : end).trim() + (end > 0 ? '…' : '');
+  }
+
+  function render(items: Item[], terms: string[]) {
+    list.innerHTML = items
+      .map((it) => {
+        const meta = [it.k, fmt.format(new Date(it.d)), it.m ? `${it.m} min` : ''].filter(Boolean).join(' · ');
+        // A short fragment is already shown whole as its title.
+        const whole = it.k === 'Fragment' && !it.t.endsWith('…');
+        const text = whole ? '' : terms.length ? snippet(it as Item & { _x: string }, terms) : (it.e ?? '');
+        return `<li><a href="${esc(it.h)}"><span class="meta">${esc(meta)}</span><span class="t">${highlight(it.t, terms)}</span>${text ? `<span class="x">${highlight(text, terms)}</span>` : ''}</a></li>`;
+      })
+      .join('');
+  }
+
+  async function run() {
+    const q = fold(input.value.trim());
+    let items: Awaited<ReturnType<typeof load>>;
+    try {
+      items = await load();
+    } catch {
+      status.textContent = 'Search is unavailable right now. Try the archive instead.';
+      list.innerHTML = '<li><a href="/articles"><span class="t">All essays</span></a></li>';
+      return;
+    }
+    if (q !== fold(input.value.trim())) return; // a newer query is already running
+    if (!q) {
+      status.textContent = 'Recent writing';
+      render(items.filter((it) => it.k !== 'Fragment').slice(0, 5), []);
+      return;
+    }
+    const terms = q.split(/\s+/).filter(Boolean);
+    const scored = [];
+    for (const it of items as (Item & { _t: string; _g: string; _e: string; _x: string })[]) {
+      let score = 0;
+      let all = true;
+      for (const t of terms) {
+        const s = (it._t.includes(t) ? 10 : 0) + (it._g.includes(t) ? 6 : 0) + (it._e.includes(t) ? 4 : 0) + (it._x.includes(t) ? 1 : 0);
+        if (!s) {
+          all = false;
+          break;
+        }
+        score += s;
+      }
+      if (all) scored.push({ it, score });
+    }
+    scored.sort((a, b) => b.score - a.score || b.it.d.localeCompare(a.it.d));
+    const top = scored.slice(0, 12).map((s) => s.it);
+    status.textContent = top.length
+      ? `${scored.length} ${scored.length === 1 ? 'result' : 'results'}`
+      : `Nothing for “${input.value.trim()}”. Try a single word.`;
+    render(top, terms);
+  }
+
+  let timer: number | undefined;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(run, 80);
+  });
+
+  function open() {
+    if (dialog.open) return;
+    opener = document.activeElement as HTMLElement | null;
+    dialog.showModal();
+    input.select();
+    run();
+  }
+  function close() {
+    dialog.close();
+  }
+  dialog.addEventListener('close', () => opener?.focus?.());
+  // Click on the dimmed backdrop closes it.
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) close();
+  });
+  dialog.querySelector('[data-search-close]')!.addEventListener('click', close);
+  document.querySelectorAll('[data-search-open]').forEach((b) => b.addEventListener('click', open));
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      dialog.open ? close() : open();
+      return;
+    }
+    // "/" also opens search, unless you're typing somewhere.
+    const typing = e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]');
+    if (e.key === '/' && !typing && !dialog.open) {
+      e.preventDefault();
+      open();
+    }
+    if (!dialog.open) return;
+    // Enter in the box opens the top result.
+    if (e.key === 'Enter' && document.activeElement === input) {
+      e.preventDefault();
+      list.querySelector('a')?.click();
+      return;
+    }
+    // Arrow keys move between the box and the results.
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const links = [...list.querySelectorAll<HTMLAnchorElement>('a')];
+      if (!links.length) return;
+      e.preventDefault();
+      const i = links.indexOf(document.activeElement as HTMLAnchorElement);
+      if (e.key === 'ArrowDown') (links[i + 1] ?? links[0]).focus();
+      else if (i <= 0) input.focus();
+      else links[i - 1].focus();
+    }
+  });
+  // Show the Mac shortcut on Macs.
+  if (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) {
+    document.querySelectorAll('[data-shortcut]').forEach((k) => (k.textContent = '⌘ K'));
+    document.querySelectorAll('[data-search-open][title]').forEach((b) => b.setAttribute('title', 'Search (⌘ K)'));
+  }
+
+  // Warm the index when someone hovers or focuses the search button.
+  document.querySelectorAll('[data-search-open]').forEach((b) =>
+    ['pointerenter', 'focus'].forEach((ev) => b.addEventListener(ev, () => load().catch(() => {}), { once: true })),
+  );
+</script>

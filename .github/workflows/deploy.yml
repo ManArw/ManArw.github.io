@@ -1,34 +1,76 @@
 name: Deploy to GitHub Pages
 
+# How new Substack writing reaches the site:
+#   1. sync:   fetch Substack (through the site's Cloudflare Worker, because
+#              Substack blocks GitHub's servers) and commit the snapshots if
+#              anything changed.
+#   2. build:  build the static site from those snapshots.
+#   3. deploy: publish to GitHub Pages.
+# Scheduled runs only build and deploy when the sync found something new.
+# A failed sync (Substack unreachable) fails the run, so GitHub emails you
+# instead of the site silently going stale. The live site is never touched
+# by a failed sync.
+
 on:
   push:
     branches: [main]
-  # Rebuild every day at 06:00 IST so new Substack posts appear automatically.
   schedule:
-    - cron: '30 0 * * *'
+    # Every two hours, at :17 to dodge the top-of-the-hour queue.
+    - cron: '17 */2 * * *'
   workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - id: sync
+        run: npm run sync
+      - name: Commit refreshed snapshots
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/substack-snapshot.json src/data/notes-snapshot.json
+          git commit -m "Sync Substack"
+          git pull --rebase --autostash
+          git push
+
+  build:
+    needs: sync
+    # Pushes always build (even if Substack is down); scheduled runs only when there's news.
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.sync.outputs.changed == 'true') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main # includes the snapshot commit from the sync job
       - uses: withastro/action@v5
         with:
           node-version: 24
 
   deploy:
     needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -1,0 +1,241 @@
+---
+// "Did this stay with you?" Shared reaction counts, stored by the site's
+// Cloudflare Worker (worker/) against the piece's stable id. No accounts:
+// each browser keeps a random token, and the server counts one reaction of
+// each kind per token. Click again to take a reaction back.
+import { site } from '../data/site';
+import { REACTIONS } from '../data/reactions';
+
+interface Props {
+  id: string;
+}
+const { id } = Astro.props;
+---
+
+<section class="reactions" aria-labelledby="reactions-title" data-reactions data-piece={id} data-api={site.api}>
+  <h2 id="reactions-title">Did this stay with you?</h2>
+  <p class="hint">Leave a mark. No account, no comments, just a quiet count.</p>
+  <ul role="list">
+    {
+      REACTIONS.map((r) => (
+        <li>
+          <button type="button" aria-pressed="false" data-reaction={r.key}>
+            <span class="emoji" aria-hidden="true">
+              {r.emoji}
+            </span>
+            <span class="label">{r.label}</span>
+            <span class="count" data-count />
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="status" role="status" data-status></p>
+</section>
+
+<style>
+  .reactions {
+    text-align: center;
+  }
+  h2 {
+    font-size: var(--step-1);
+    font-weight: 300;
+  }
+  .hint {
+    margin-top: var(--space-1);
+    font-size: var(--step--1);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  ul {
+    list-style: none;
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    min-height: 44px;
+    padding: 0.4em 1em 0.3em 0.8em;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      border-color var(--dur-1),
+      color var(--dur-1),
+      background-color var(--dur-1);
+  }
+  button:hover {
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+    color: var(--ink);
+  }
+  button[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--ink);
+  }
+  button[aria-busy='true'] {
+    cursor: progress;
+  }
+  /* Muted until chosen, so the row stays quiet on the page. */
+  .emoji {
+    font-size: 1.05em;
+    line-height: 1;
+    filter: grayscale(1);
+    opacity: 0.7;
+    transition:
+      filter var(--dur-2),
+      opacity var(--dur-2),
+      transform var(--dur-2) var(--ease-out);
+  }
+  button:hover .emoji {
+    opacity: 0.9;
+  }
+  button[aria-pressed='true'] .emoji {
+    filter: none;
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  .count {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+  }
+  .count:empty {
+    display: none;
+  }
+  .count::before {
+    content: '· ';
+  }
+  .status {
+    min-height: 1.5em;
+    margin-top: var(--space-2);
+    font-size: var(--step--1);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+</style>
+
+<script>
+  type Counts = Record<string, number>;
+  const root = document.querySelector<HTMLElement>('[data-reactions]');
+  if (root) setup(root);
+
+  function voterToken() {
+    try {
+      let t = localStorage.getItem('reaction-voter');
+      if (!t) {
+        t = crypto.randomUUID();
+        localStorage.setItem('reaction-voter', t);
+      }
+      return t;
+    } catch {
+      // No storage (private mode, blocked): one token per page view still
+      // stops double-counting within the visit.
+      return ((window as any).__voter ??= crypto.randomUUID());
+    }
+  }
+
+  function setup(root: HTMLElement) {
+    const piece = root.dataset.piece!;
+    const api = root.dataset.api!;
+    const status = root.querySelector<HTMLElement>('[data-status]')!;
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-reaction]')];
+    const mineKey = `reactions:${piece}`;
+    let counts: Counts = {};
+
+    const readMine = (): string[] => {
+      try {
+        return JSON.parse(localStorage.getItem(mineKey) ?? '[]');
+      } catch {
+        return [];
+      }
+    };
+    const writeMine = (list: string[]) => {
+      try {
+        localStorage.setItem(mineKey, JSON.stringify(list));
+      } catch {}
+    };
+    let mine = new Set(readMine());
+
+    function paint() {
+      for (const b of buttons) {
+        const key = b.dataset.reaction!;
+        const n = counts[key] ?? 0;
+        b.setAttribute('aria-pressed', String(mine.has(key)));
+        b.querySelector('[data-count]')!.textContent = n > 0 ? String(n) : '';
+      }
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(`${api}/reactions?ids=${encodeURIComponent(piece)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        counts = (await res.json()).counts[piece] ?? {};
+        paint();
+      } catch {
+        // Counts are a nicety: the buttons still work, they just start blank.
+        paint();
+      }
+    }
+
+    async function toggle(b: HTMLButtonElement) {
+      if (b.getAttribute('aria-busy') === 'true') return;
+      const key = b.dataset.reaction!;
+      const on = !mine.has(key);
+      const before = { counts: { ...counts }, mine: new Set(mine) };
+
+      // Show it straight away; the server's answer settles the real count.
+      on ? mine.add(key) : mine.delete(key);
+      counts[key] = Math.max(0, (counts[key] ?? 0) + (on ? 1 : -1));
+      paint();
+      b.setAttribute('aria-busy', 'true');
+      status.textContent = '';
+
+      try {
+        const res = await fetch(`${api}/reactions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ piece, reaction: key, voter: voterToken(), on }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        counts = (await res.json()).counts[piece] ?? counts;
+        writeMine([...mine]);
+        status.textContent = on ? 'Thank you. Counted.' : 'Taken back.';
+      } catch {
+        counts = before.counts;
+        mine = before.mine;
+        status.textContent = 'Couldn’t reach the counter just now. Try again in a bit.';
+      } finally {
+        b.removeAttribute('aria-busy');
+        paint();
+      }
+    }
+
+    buttons.forEach((b) => b.addEventListener('click', () => toggle(b)));
+    paint();
+
+    // Only ask for counts when the reader gets near the end.
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        ([e]) => {
+          if (e.isIntersecting) {
+            io.disconnect();
+            load();
+          }
+        },
+        { rootMargin: '600px 0px' },
+      );
+      io.observe(root);
+    } else load();
+  }
+</script>
