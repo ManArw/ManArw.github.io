@@ -133,13 +133,6 @@ export const now = {
   ] as { label: string; title: string; body: string; teaser?: boolean }[],
 };
 
-// Pre-recorded narration for a piece, by slug. Put the file in public/audio/
-// and add a line here; "Listen" then plays it instead of the browser voice.
-// (Blog posts can set `audio:` in their front matter instead.)
-export const audioFiles: Record<string, { url: string; duration?: number }> = {
-  // 'the-evidence': { url: '/audio/the-evidence.mp3', duration: 241 },
-};
-
 export const education = [
   {
     school: 'JSS Science and Technology University',

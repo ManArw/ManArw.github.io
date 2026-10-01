@@ -1,13 +1,16 @@
 // RSS for the site's own writing (essays + notebook posts), generated from the
 // same content model as the archive, so it never needs editing by hand.
 import type { APIRoute } from 'astro';
-import { getPieces, kindLabel } from '../lib/content';
+import { getPieces, kindLabel, type Audio } from '../lib/content';
 import { site } from '../data/site';
 
 const xml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c]!);
 const cdata = (s: string) => `<![CDATA[${s.replaceAll(']]>', ']]]]><![CDATA[>')}]]>`;
 // Feed readers don't know this site's root, so make root-relative links absolute.
 const absolutize = (html: string) => html.replace(/(href|src)="\/(?!\/)/g, `$1="${site.url}/`);
+// The piece's narration, for feed readers that play audio.
+const enclosure = (audio: Audio | null) =>
+  audio ? `\n      <enclosure url="${new URL(audio.src, site.url).href}" length="${audio.bytes}" type="audio/mpeg" />` : '';
 
 export const GET: APIRoute = async () => {
   const pieces = (await getPieces()).slice(0, 50);
@@ -26,7 +29,7 @@ export const GET: APIRoute = async () => {
       <dc:creator>${xml(site.name)}</dc:creator>
       <category>${kindLabel(p.kind)}</category>
 ${p.tags.map((t) => `      <category>${xml(t)}</category>`).join('\n')}
-      <description>${xml(p.excerpt)}</description>
+      <description>${xml(p.excerpt)}</description>${enclosure(p.audio)}
       <content:encoded>${cdata(body)}</content:encoded>
     </item>`;
   });

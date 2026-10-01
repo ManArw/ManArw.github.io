@@ -3,7 +3,7 @@
 //
 // Sources (all public, no keys):
 //   RSS feed      /feed                   → title, subtitle, date, cover, full HTML
-//   Archive API   /api/v1/archive         → stable post id, tags, voiceover/podcast audio
+//   Archive API   /api/v1/archive         → stable post id, tags
 //   Notes API     /api/v1/reader/feed/... → Substack Notes (not in RSS at all)
 // The two APIs are unofficial, so everything built on them is optional.
 import { XMLParser } from 'fast-xml-parser';
@@ -107,26 +107,15 @@ export function parseFeed(xml) {
     .filter((p) => p.slug && p.title);
 }
 
-/** Archive API page → metadata keyed by slug: stable id, tags, audio. */
+/** Archive API page → metadata keyed by slug: stable id, tags. */
 export function parseArchive(posts, base) {
   if (!Array.isArray(posts)) throw new Error('archive response is not a list');
   const meta = new Map();
   for (const p of posts) {
     if (!p?.slug || !p?.id) continue;
-    let audio = null;
-    if (p.podcast_url) {
-      audio = { url: p.podcast_url, duration: p.podcast_duration ?? null, source: 'substack-podcast' };
-    } else if (p.has_voiceover && p.voiceover_upload_id) {
-      audio = {
-        url: `${base}/api/v1/audio/upload/${p.voiceover_upload_id}/src`,
-        duration: p.voiceoverUpload?.duration ?? null,
-        source: 'substack-voiceover',
-      };
-    }
     meta.set(p.slug, {
       id: String(p.id),
       tags: (p.postTags ?? []).filter((t) => !t.hidden).map((t) => String(t.name).toLowerCase()),
-      audio,
     });
   }
   return meta;

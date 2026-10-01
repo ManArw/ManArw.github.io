@@ -7,16 +7,20 @@
 //   post   Notebook entries written here   → /blog/<slug>
 //          (src/content/blog/*.md|mdx)
 //   notes  Substack Notes                  → /fragments (getNotes below)
+import { existsSync } from 'node:fs';
 import { getCollection, type CollectionEntry } from 'astro:content';
 import type { ImageMetadata } from 'astro';
 import essaysSnapshot from '../data/substack-snapshot.json';
 import notesSnapshot from '../data/notes-snapshot.json';
-import { site, audioFiles } from '../data/site';
+import audioManifest from '../data/audio-manifest.json';
+import { site } from '../data/site';
+import { NARRATED_ESSAYS } from '../data/narration.mjs';
+import { essayBlocks, postBlocks, narrationHash } from './narration.mjs';
 
 export type Kind = 'essay' | 'post';
 
-/** Pre-recorded narration. When a piece has one, the Listen player uses it instead of browser speech. */
-export type Audio = { url: string; duration?: number | null };
+/** Generated narration (see docs/AUDIO.md and narration/). */
+export type Audio = { src: string; duration: number; bytes: number };
 
 export type Piece = {
   /** Stable across URL changes. Reactions are stored against it. */
@@ -43,7 +47,10 @@ export type Piece = {
   /** Remote cover (Substack) or local image (blog front matter). */
   cover?: string | ImageMetadata;
   coverAlt?: string;
-  audio?: Audio | null;
+  /** Narration file, when one exists and matches the current text. */
+  audio: Audio | null;
+  /** off: narration not switched on · ready: has audio · missing: switched on, but no current file. */
+  narration: 'off' | 'ready' | 'missing';
   /** Essays: cleaned HTML from the feed. */
   html?: string;
   /** Posts: the collection entry, for render(). */
@@ -70,7 +77,6 @@ type EssayRecord = {
   url: string;
   cover: string | null;
   tags: string[];
-  audio: Audio | null;
   html: string;
 };
 
@@ -121,14 +127,39 @@ function excerptOf(text: string, max = 180) {
 
 const absolute = (path: string) => new URL(path, site.url).href;
 
+type ManifestEntry = { hash: string; file: string; duration: number; bytes: number };
+const manifest = audioManifest as Record<string, ManifestEntry>;
+
+// The audio file is only used if it was made from exactly this text and
+// voice. Anything else (switched on but not generated yet, generation failed,
+// or the piece changed since) publishes the piece without a player and says so
+// in the build log.
+function narrationFor(key: string, slug: string, enabled: boolean, blocks: () => unknown[]) {
+  if (!enabled) return { audio: null, narration: 'off' as const };
+  const hash = narrationHash(blocks());
+  const entry = manifest[key];
+  if (entry?.hash === hash && existsSync(`public${entry.file}`)) {
+    return { audio: { src: entry.file, duration: entry.duration, bytes: entry.bytes }, narration: 'ready' as const };
+  }
+  const why = !entry
+    ? 'no audio has been generated yet'
+    : entry.hash !== hash
+      ? 'the piece changed since its audio was made'
+      : `its file ${entry.file} is missing`;
+  const msg = `Narration missing for ${slug}: ${why}. It publishes without a player; run \`npm run narrate\` or let the workflow do it.`;
+  console.warn(process.env.GITHUB_ACTIONS ? `::warning title=Narration::${msg}` : `[narration] ${msg}`);
+  return { audio: null, narration: 'missing' as const };
+}
+
 function essayPiece(e: EssayRecord): Piece {
   const text = htmlToText(e.html);
   const words = countWords(text);
   const href = `/articles/${e.slug}`;
+  // Set once by the sync (Substack's post id when known) and carried over if
+  // the post is renamed, so reactions and narration stay attached.
+  const id = e.key ?? (e.id ? `substack-${e.id}` : `substack-${e.slug}`);
   return {
-    // Set once by the sync (Substack's post id when known) and carried over
-    // if the post is renamed, so reactions stay attached.
-    id: e.key ?? (e.id ? `substack-${e.id}` : `substack-${e.slug}`),
+    id,
     kind: 'essay',
     slug: e.slug,
     href,
@@ -143,7 +174,9 @@ function essayPiece(e: EssayRecord): Piece {
     text,
     sourceUrl: e.url,
     cover: e.cover ?? undefined,
-    audio: audioFiles[e.slug] ?? e.audio ?? null,
+    ...narrationFor(id, e.slug, NARRATED_ESSAYS.includes(e.slug), () =>
+      essayBlocks({ title: e.title, subtitle: e.subtitle, html: e.html }),
+    ),
     html: e.html,
   };
 }
@@ -152,8 +185,9 @@ function postPiece(entry: CollectionEntry<'blog'>): Piece {
   const text = markdownToText(entry.body ?? '');
   const words = countWords(text);
   const href = `/blog/${entry.id}`;
+  const id = `blog-${entry.data.id ?? entry.id}`;
   return {
-    id: `blog-${entry.data.id ?? entry.id}`,
+    id,
     kind: 'post',
     slug: entry.id,
     href,
@@ -168,7 +202,9 @@ function postPiece(entry: CollectionEntry<'blog'>): Piece {
     text,
     cover: entry.data.cover,
     coverAlt: entry.data.coverAlt,
-    audio: entry.data.audio ?? audioFiles[entry.id] ?? null,
+    ...narrationFor(id, entry.data.id ?? entry.id, entry.data.audio, () =>
+      postBlocks({ title: entry.data.title, summary: entry.data.summary, body: entry.body ?? '' }),
+    ),
     entry,
   };
 }

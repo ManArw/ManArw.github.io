@@ -1,5 +1,5 @@
 // Pulls Substack into the committed snapshots the site is built from:
-//   src/data/substack-snapshot.json  (essays: RSS for content, archive API for ids/tags/audio)
+//   src/data/substack-snapshot.json  (essays: RSS for content, archive API for ids/tags)
 //   src/data/notes-snapshot.json     (Substack Notes, from the Notes API)
 //
 // Run with `npm run sync`. The deploy workflow runs it every couple of hours
@@ -98,7 +98,6 @@ const essayRecord = (e) => ({
   url: e.url,
   cover: e.cover ?? null,
   tags: e.tags ?? [],
-  audio: e.audio ?? null,
   html: e.html,
 });
 
@@ -110,7 +109,7 @@ async function syncEssays() {
   const isNew = live.some((e) => !bySlug.has(e.slug));
 
   // The archive API lists every post (the RSS feed only has the latest ~20),
-  // with Substack's numeric post id, tags and voiceover audio. It's the
+  // with Substack's numeric post id and tags. It's the
   // endpoint Substack rate-limits hardest, so only ask when there's a new
   // post to identify, plus one pass a day to catch tag edits and unpublished posts.
   let archive = null;

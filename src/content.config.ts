@@ -19,9 +19,8 @@ const blog = defineCollection({
       // Keeps reactions attached if you ever rename the file. Leave it out
       // and the file name is used.
       id: z.string().regex(/^[a-z0-9-]+$/).optional(),
-      // Pre-recorded narration, e.g. { url: /audio/my-post.mp3, duration: 312 }.
-      // Without it, "Listen" uses the browser's built-in voice.
-      audio: z.object({ url: z.string(), duration: z.number().optional() }).optional(),
+      // `audio: true` generates a narration of this post (docs/AUDIO.md).
+      audio: z.boolean().default(false),
     }),
 });
 

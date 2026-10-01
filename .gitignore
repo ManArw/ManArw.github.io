@@ -6,3 +6,5 @@ dist/
 .claude/
 worker/node_modules/
 worker/.wrangler/
+narration/node_modules/
+narration/.cache/

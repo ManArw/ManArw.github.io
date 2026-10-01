@@ -1,15 +1,19 @@
 name: Deploy to GitHub Pages
 
 # How new Substack writing reaches the site:
-#   1. sync:   fetch Substack (through the site's Cloudflare Worker, because
-#              Substack blocks GitHub's servers) and commit the snapshots if
-#              anything changed.
-#   2. build:  build the static site from those snapshots.
-#   3. deploy: publish to GitHub Pages.
+#   1. sync:    fetch Substack (through the site's Cloudflare Worker, because
+#               Substack blocks GitHub's servers) and commit the snapshots if
+#               anything changed. Then check whether any narrated piece needs
+#               new audio (cheap: compares fingerprints, no voice model).
+#   2. narrate: only when something needs audio: generate it with Kokoro-82M
+#               on the runner's CPU and commit the MP3s (docs/AUDIO.md).
+#   3. build:   build the static site from the snapshots and audio.
+#   4. deploy:  publish to GitHub Pages.
 # Scheduled runs only build and deploy when the sync found something new.
-# A failed sync (Substack unreachable) fails the run, so GitHub emails you
-# instead of the site silently going stale. The live site is never touched
-# by a failed sync.
+# A failed sync (Substack unreachable) or failed narration fails the run, so
+# GitHub emails you, but the site still builds and deploys: a piece whose audio
+# failed just publishes without a player. The live site is never touched by a
+# failed sync.
 
 on:
   push:
@@ -30,6 +34,7 @@ jobs:
       contents: write
     outputs:
       changed: ${{ steps.sync.outputs.changed }}
+      narrate: ${{ steps.plan.outputs.narrate }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -48,10 +53,75 @@ jobs:
           git commit -m "Sync Substack"
           git pull --rebase --autostash
           git push
+      - id: plan
+        name: Check narration
+        if: ${{ !cancelled() }}
+        run: node narration/plan.mjs
+
+  narrate:
+    needs: sync
+    # Only when a narrated piece is new or changed. Scheduled runs only when
+    # Substack brought something new, so a failure isn't retried every 2 hours.
+    if: ${{ !cancelled() && needs.sync.outputs.narrate == 'true' && (github.event_name != 'schedule' || needs.sync.outputs.changed == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main # includes the snapshot commit from the sync job
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            narration/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix narration
+      - name: Make sure an MP3 encoder is available
+        run: test -x narration/node_modules/ffmpeg-static/ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      # The voice model (~330 MB) is downloaded once and kept; synthesised
+      # passages are kept too, so an edit only re-speaks what changed.
+      - uses: actions/cache/restore@v4
+        with:
+          path: narration/.cache/models
+          key: narration-model-kokoro-82m-v1.0-fp32
+      - uses: actions/cache/restore@v4
+        with:
+          path: narration/.cache/chunks
+          key: narration-chunks-${{ github.run_id }}
+          restore-keys: narration-chunks-
+      - id: narrate
+        run: npm run narrate
+      - name: Commit narration
+        # Keep whatever succeeded, even if another piece failed.
+        if: ${{ !cancelled() }}
+        run: |
+          git add public/audio src/data/audio-manifest.json
+          if git diff --cached --quiet; then echo "No new audio to commit."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Narrate: generate audio"
+          git pull --rebase --autostash
+          git push
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: narration/.cache/models
+          key: narration-model-kokoro-82m-v1.0-fp32
+        continue-on-error: true # already saved by an earlier run
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: narration/.cache/chunks
+          key: narration-chunks-${{ github.run_id }}
 
   build:
-    needs: sync
-    # Pushes always build (even if Substack is down); scheduled runs only when there's news.
+    needs: [sync, narrate]
+    # Pushes always build (even if Substack is down or narration failed);
+    # scheduled runs only when there's news.
     if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.sync.outputs.changed == 'true') }}
     runs-on: ubuntu-latest
     permissions:
@@ -59,7 +129,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: main # includes the snapshot commit from the sync job
+          ref: main # includes the sync and narration commits
       - uses: withastro/action@v5
         with:
           node-version: 24

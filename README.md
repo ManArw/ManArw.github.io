@@ -10,6 +10,7 @@ Substack from GitHub's servers, and shared reaction counts.
 npm install
 npm run sync       # pull the latest essays + notes from Substack (optional)
 npm run dev        # http://localhost:4321
+npm run narrate    # generate narration for new/changed pieces (see docs/AUDIO.md)
 ```
 
 ## Where things live
@@ -25,6 +26,8 @@ npm run dev        # http://localhost:4321
 | Hero photo | `src/assets/fuji.jpg` (replace with a higher-res copy any time, same name) |
 | Japan photos | `src/assets/japan/` · video in `public/media/` |
 | Reaction labels and emoji | `src/data/reactions.ts` |
+| Which pieces are narrated, and the voice | `src/data/narration.mjs` (see [docs/AUDIO.md](docs/AUDIO.md)) |
+| Narration audio | `public/audio/` (generated, don't edit) |
 | Colours, fonts, the shared night-sky background | `src/styles/global.css` (top of file) |
 | The Worker (Substack relay + reactions) | `worker/` |
 
@@ -80,20 +83,18 @@ attached.
 For photos and video, use `.mdx` and the `Figure` / `Video` components (see `japan-ten-days.mdx`).
 `cover:` adds a header photo; `featured: true` puts the post at the top of the Blog page.
 
-## Listen to this article
+## Listen to this piece (narration)
 
-Every piece has a "Listen to this article" player. By default it reads the article body aloud with the
-reader's own browser voice (Chrome, Edge and Safari all have good ones; Edge's "Natural" voices are
-the best). Nothing to pay for, no service involved.
+Chosen pieces have a narrated version: a real MP3 made for free by an open-source voice model
+(Kokoro-82M) and played by a small player at the top of the piece. Nothing is narrated unless you
+switch it on:
 
-To use a real recording instead (your own voice, or an ElevenLabs export):
+- **Substack essay:** add its slug to `NARRATED_ESSAYS` in `src/data/narration.mjs`.
+- **Blog post:** add `audio: true` to its front matter.
 
-1. Put the file in `public/audio/`, e.g. `public/audio/the-evidence.mp3`.
-2. For a Substack essay, add it to `audioFiles` in `src/data/site.ts`:
-   `'the-evidence': { url: '/audio/the-evidence.mp3', duration: 241 }` (duration in seconds).
-   For a blog post, add `audio: { url: /audio/my-post.mp3, duration: 241 }` to its front matter.
-
-Substack voiceovers are picked up automatically if you ever add them there.
+Commit, and the workflow generates the audio (only for new or changed pieces) and deploys. Everything,
+including running it on your laptop instead, caching, failures and licences, is in
+[docs/AUDIO.md](docs/AUDIO.md).
 
 ## Reactions
 

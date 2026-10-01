@@ -1,150 +1,154 @@
 ---
-// "Listen to this article". Plays a recorded narration when the piece has one
-// (piece.audio), otherwise reads the article body aloud with the browser's
-// own speech synthesis: no service, no keys, nothing to pay for. Hidden when
-// neither is possible (no JS, or a browser without speech).
-//
-// Only the element marked [data-read-body] is read, so navigation, metadata,
-// buttons, captions and the footer never are.
+// "Listen to this piece": a small player for the piece's generated narration
+// (see docs/AUDIO.md). It's a plain HTML5 <audio> element underneath, so speed
+// changes are just playbackRate on an ordinary recording: 2× is the same file
+// played faster, nothing gets re-spoken. Nothing downloads until Play.
 import type { Audio } from '../lib/content';
+import { site } from '../data/site';
 
 interface Props {
-  words: number;
+  audio: Audio;
   title: string;
-  audio?: Audio | null;
 }
-const { words, title, audio } = Astro.props;
-// Browser voices read at roughly 170 words a minute at 1×.
-const estimate = Math.max(1, Math.round(words / 170));
-const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+const { audio, title } = Astro.props;
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const minutes = Math.max(1, Math.round(audio.duration / 60));
 const rates = [0.75, 1, 1.25, 1.5, 2];
 ---
 
-<section class="listen" aria-label="Listen to this article" data-listen data-words={words} data-title={title} data-audio={audio?.url} data-duration={audio?.duration ?? undefined} hidden>
-  <button type="button" class="start" data-start>
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"></path></svg>
-    <span>Listen to this article</span>
-    <span class="est">{audio?.duration ? mmss(audio.duration) : `about ${estimate} min`}</span>
-  </button>
+<section class="listen" aria-labelledby="listen-title" data-listen data-title={title} data-artist={site.name} data-duration={audio.duration}>
+  <p class="head">
+    <span id="listen-title">Listen to this piece</span>
+    <span class="len">{minutes} min</span>
+  </p>
+  <audio preload="none" src={audio.src} data-audio>
+    <a href={audio.src}>Download the narration (MP3)</a>
+  </audio>
 
-  <div class="player" data-player hidden>
-    <div class="controls">
-      <button type="button" class="ctl toggle" data-toggle aria-label="Pause">
-        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"></rect><rect x="13.5" y="5" width="4" height="14" rx="1"></rect></svg>
-        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"></path></svg>
-      </button>
-      <button type="button" class="ctl" data-restart aria-label="Restart from the beginning">
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4.5v4h4"></path></svg>
-      </button>
-      <input class="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Position in the article" data-seek />
-      <span class="time" aria-hidden="true" data-time>0:00</span>
-      <button type="button" class="ctl" data-stop aria-label="Stop and close the player">
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"></path></svg>
-      </button>
-    </div>
-    <div class="meta">
-      <div class="rates" role="group" aria-label="Playback speed">
-        {
-          rates.map((r) => (
-            <button type="button" data-rate={r} aria-pressed={r === 1 ? 'true' : 'false'}>
-              {r}×
-            </button>
-          ))
-        }
-      </div>
-      <p class="source" data-source>{audio ? 'Recorded narration' : 'Read aloud by your browser’s voice'}</p>
-    </div>
-    <p class="visually-hidden" role="status" data-status></p>
+  <div class="controls">
+    <button type="button" class="toggle paused" data-toggle aria-label="Play the narration">
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"></path></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"></rect><rect x="13.5" y="5" width="4" height="14" rx="1"></rect></svg>
+      <span class="i-wait" aria-hidden="true"></span>
+    </button>
+    <input
+      class="seek"
+      type="range"
+      min="0"
+      max={Math.ceil(audio.duration)}
+      step="1"
+      value="0"
+      aria-label="Position in the narration"
+      aria-valuetext={`0 seconds of ${minutes} minutes`}
+      data-seek
+    />
+    <span class="time" aria-hidden="true"><span data-now>0:00</span> / <span data-total>{mmss(audio.duration)}</span></span>
   </div>
+
+  <div class="meta">
+    <div class="rates" role="group" aria-label="Playback speed">
+      {
+        rates.map((r) => (
+          <button type="button" data-rate={r} aria-pressed={r === 1 ? 'true' : 'false'}>
+            {r}×
+          </button>
+        ))
+      }
+    </div>
+    <p class="note" data-note>Read by an open-source voice</p>
+  </div>
+  <p class="visually-hidden" role="status" data-status></p>
 </section>
 
 <style>
   .listen {
     margin: 0 0 var(--space-5);
-    font-family: var(--font-display);
-  }
-  .start {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55em;
-    min-height: 44px;
-    padding: 0.5em 1.1em 0.4em 0.85em;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--ink);
-    font: inherit;
-    font-size: var(--step--1);
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition:
-      border-color var(--dur-1),
-      background-color var(--dur-1);
-  }
-  .start:hover {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
-  }
-  .start svg {
-    width: 1.05em;
-    height: 1.05em;
-    color: var(--accent);
-    margin-bottom: 0.1em;
-  }
-  .est {
-    color: var(--ink-soft);
-    font-weight: 400;
-  }
-  .est::before {
-    content: '· ';
-  }
-  .player {
-    padding: var(--space-2) var(--space-3) var(--space-3);
+    padding: var(--space-3) var(--space-3) var(--space-2);
     border: 1px solid var(--line);
     border-radius: 14px;
     background: var(--surface);
+    font-family: var(--font-display);
+  }
+  .head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6em;
+    padding-left: var(--space-1);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .len {
+    font-weight: 400;
+    letter-spacing: 0.06em;
+  }
+  .len::before {
+    content: '· ';
   }
   .controls {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-2);
+    margin-top: var(--space-1);
   }
-  .ctl {
+  .toggle {
+    position: relative;
     flex: none;
     display: inline-grid;
     place-items: center;
     width: 44px;
     height: 44px;
     padding: 0;
-    border: 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     border-radius: 999px;
     background: transparent;
-    color: var(--ink);
+    color: var(--accent);
     cursor: pointer;
+    transition:
+      background-color var(--dur-1),
+      border-color var(--dur-1);
   }
-  .ctl:hover {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  .toggle:hover {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: var(--accent);
   }
-  .ctl svg {
+  .toggle svg {
     width: 20px;
     height: 20px;
   }
-  .toggle {
-    color: var(--accent);
-  }
   .toggle .i-play,
-  .toggle.paused .i-pause {
+  .toggle .i-wait,
+  .toggle.paused .i-pause,
+  .toggle.waiting .i-pause,
+  .toggle.waiting .i-play {
     display: none;
   }
-  .toggle.paused .i-play {
+  .toggle.paused:not(.waiting) .i-play {
     display: block;
+    margin-left: 2px;
+  }
+  /* Loading: a slow breathing ring, or just a still one with reduced motion. */
+  .toggle.waiting .i-wait {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    border-right-color: transparent;
+    animation: turn 0.9s linear infinite;
+  }
+  @keyframes turn {
+    to {
+      transform: rotate(1turn);
+    }
   }
   .seek {
     flex: 1;
     min-width: 0;
     height: 44px;
-    margin: 0 var(--space-2);
+    margin: 0;
     background: transparent;
     accent-color: var(--accent);
     cursor: pointer;
@@ -186,11 +190,9 @@ const rates = [0.75, 1, 1.25, 1.5, 2];
   }
   .time {
     flex: none;
-    min-width: 6.5em;
     font-size: var(--step--1);
     font-variant-numeric: tabular-nums;
     color: var(--ink-soft);
-    text-align: right;
     white-space: nowrap;
   }
   .meta {
@@ -198,12 +200,12 @@ const rates = [0.75, 1, 1.25, 1.5, 2];
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-1) var(--space-3);
-    padding-left: var(--space-1);
+    gap: 0 var(--space-3);
   }
   .rates {
     display: flex;
     flex-wrap: wrap;
+    margin-left: calc(var(--space-1) * -1);
   }
   .rates button {
     min-width: 44px;
@@ -226,339 +228,74 @@ const rates = [0.75, 1, 1.25, 1.5, 2];
     color: var(--ink);
     font-weight: 600;
   }
-  .source {
-    font-size: 0.8rem;
-    color: var(--ink-soft);
-    font-style: italic;
+  .note {
+    padding-right: var(--space-1);
     font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .listen.failed .note {
+    color: var(--ink);
   }
   @media (max-width: 480px) {
-    .time {
-      min-width: 0;
-    }
     .controls {
       flex-wrap: wrap;
+      row-gap: 0;
     }
     .seek {
-      order: 5;
+      order: 3;
       flex-basis: 100%;
-      margin: 0;
       height: 32px;
     }
     .time {
       margin-left: auto;
     }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .toggle.waiting .i-wait {
+      animation: none;
+      border-right-color: currentColor;
+      opacity: 0.6;
+    }
+  }
 </style>
 
 <script>
-  type Pos = { frac: number; elapsed: number; total: number | null; approx: boolean };
-  type Engine = {
-    readonly playing: boolean;
-    readonly finished: boolean;
-    play(): void;
-    pause(): void;
-    restart(): void;
-    seek(frac: number): void;
-    setRate(rate: number): void;
-    position(): Pos;
-    stop(): void;
-  };
-
   const root = document.querySelector<HTMLElement>('[data-listen]');
-  const body = document.querySelector<HTMLElement>('[data-read-body]');
-  const canSpeak = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance === 'function';
-  // Some browsers keep talking across page loads; this page starts quiet.
-  if (canSpeak) speechSynthesis.cancel();
-  if (root && body && (root.dataset.audio || canSpeak)) setup(root, body);
+  if (root) setup(root);
 
-  // ---------- browser speech ----------
-
-  // Leaf text blocks of the article body, in reading order.
-  function readableBlocks(container: HTMLElement) {
-    const SEL = 'p, h2, h3, h4, li, blockquote';
-    return [...container.querySelectorAll<HTMLElement>(SEL)].filter(
-      (el) =>
-        !el.closest('figure, pre, nav, aside, button, [data-no-read]') &&
-        !el.querySelector(SEL) &&
-        /\p{L}/u.test(el.textContent ?? ''),
-    );
-  }
-
-  function blockText(el: HTMLElement) {
-    const clone = el.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('sup, button, svg, img, [aria-hidden="true"]').forEach((n) => n.remove());
-    let text = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
-    // Give headings a beat before the paragraph that follows.
-    if (/^H\d$/.test(el.tagName) && !/[.!?…:]$/.test(text)) text += '.';
-    return text;
-  }
-
-  // Short utterances: Chrome drops long ones after ~15 seconds, and short
-  // chunks make pause, seek and speed changes land close to where you are.
-  function chunk(text: string, max = 180) {
-    const out: string[] = [];
-    let cur = '';
-    const push = (part: string) => {
-      if (cur && (cur + part).length > max) {
-        out.push(cur.trim());
-        cur = '';
-      }
-      cur += part;
-    };
-    for (const sentence of text.match(/[^.!?…]+(?:[.!?…]+["'”’)\]]*|$)\s*/g) ?? [text]) {
-      if (sentence.length <= max) {
-        push(sentence);
-        continue;
-      }
-      for (const clause of sentence.split(/(?<=[,;:—–])\s+/)) {
-        if (clause.length <= max) push(clause + ' ');
-        else for (const word of clause.split(' ')) push(word + ' ');
-      }
-    }
-    if (cur.trim()) out.push(cur.trim());
-    return out;
-  }
-
-  function pickVoice() {
-    const voices = speechSynthesis.getVoices().filter((v) => /^en([-_]|$)/i.test(v.lang));
-    const novelty = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|hysterical|eloquence/i;
-    const score = (v: SpeechSynthesisVoice) =>
-      (/natural|neural|premium|enhanced/i.test(v.name) ? 4 : 0) +
-      (/google/i.test(v.name) ? 2 : 0) +
-      (/en[-_]in/i.test(v.lang) ? 1.5 : /en[-_]gb/i.test(v.lang) ? 1.2 : /en[-_]us/i.test(v.lang) ? 1 : 0) +
-      (v.default ? 0.5 : 0) -
-      (novelty.test(v.name) ? 10 : 0);
-    return voices.sort((a, b) => score(b) - score(a))[0] ?? null;
-  }
-
-  function speechEngine(container: HTMLElement, words: number, onUpdate: () => void, onError: (msg: string) => void): Engine {
-    const synth = window.speechSynthesis;
-    synth.cancel(); // anything left over from another page in this tab
-
-    const blocks = readableBlocks(container);
-    const chunks: { block: number; text: string; start: number }[] = [];
-    let total = 0;
-    blocks.forEach((el, block) => {
-      for (const text of chunk(blockText(el))) {
-        chunks.push({ block, text, start: total });
-        total += text.length + 1;
-      }
-    });
-
-    let index = 0;
-    let offset = 0;
-    let rate = 1;
-    let playing = false;
-    let generation = 0; // stale events from cancelled utterances are ignored
-    let voice = pickVoice();
-    synth.addEventListener?.('voiceschanged', () => (voice = pickVoice()));
-
-    let current: HTMLElement | null = null;
-    const highlight = (block: number) => {
-      const el = blocks[block] ?? null;
-      if (el === current) return;
-      current?.classList.remove('is-speaking');
-      el?.classList.add('is-speaking');
-      current = el;
-    };
-
-    const silence = () => {
-      generation++;
-      const busy = synth.speaking || synth.pending;
-      if (busy) synth.cancel();
-      return busy;
-    };
-
-    const speak = () => {
-      const mine = ++generation;
-      const c = chunks[index];
-      if (!c) {
-        playing = false;
-        index = chunks.length;
-        highlight(-1);
-        onUpdate();
-        return;
-      }
-      highlight(c.block);
-      const u = new SpeechSynthesisUtterance(c.text);
-      u.rate = rate;
-      u.lang = voice?.lang ?? document.documentElement.lang ?? 'en';
-      if (voice) u.voice = voice;
-      let started = false;
-      u.onstart = () => (started = true);
-      u.onboundary = (e) => {
-        if (mine !== generation) return;
-        offset = e.charIndex;
-        onUpdate();
-      };
-      u.onend = () => {
-        if (mine !== generation) return;
-        index++;
-        offset = 0;
-        speak();
-        onUpdate();
-      };
-      u.onerror = (e) => {
-        if (mine !== generation || e.error === 'interrupted' || e.error === 'canceled') return;
-        playing = false;
-        generation++;
-        onError(e.error === 'not-allowed' ? 'Press play again to start listening.' : 'The browser voice stopped unexpectedly.');
-        onUpdate();
-      };
-      synth.speak(u);
-      // Some browsers expose the API but have no voice installed: nothing
-      // ever starts. Say so instead of sitting there silently.
-      window.setTimeout(() => {
-        if (mine === generation && playing && !started && !synth.speaking) {
-          playing = false;
-          generation++;
-          synth.cancel();
-          onError('This browser has no voice to read with. Try Chrome, Edge or Safari.');
-          onUpdate();
-        }
-      }, 4000);
-    };
-
-    // After a cancel, Safari needs a moment before it accepts a new utterance.
-    const restartSpeech = () => {
-      if (silence()) window.setTimeout(() => playing && speak(), 80);
-      else speak();
-    };
-
-    return {
-      get playing() {
-        return playing;
-      },
-      get finished() {
-        return index >= chunks.length;
-      },
-      play() {
-        if (playing) return;
-        if (index >= chunks.length) index = 0;
-        playing = true;
-        offset = 0;
-        restartSpeech();
-        onUpdate();
-      },
-      pause() {
-        if (!playing) return;
-        playing = false;
-        offset = 0;
-        silence();
-        onUpdate();
-      },
-      restart() {
-        index = 0;
-        offset = 0;
-        if (!playing) return this.play();
-        restartSpeech();
-        onUpdate();
-      },
-      seek(frac) {
-        const target = frac * total;
-        const i = chunks.findIndex((c) => c.start + c.text.length >= target);
-        index = i < 0 ? chunks.length - 1 : i;
-        offset = 0;
-        if (playing) restartSpeech();
-        else highlight(chunks[index]?.block ?? -1);
-        onUpdate();
-      },
-      setRate(r) {
-        rate = r;
-        if (playing) restartSpeech();
-        onUpdate();
-      },
-      position() {
-        const c = chunks[index];
-        const chars = c ? c.start + Math.min(offset, c.text.length) : total;
-        const frac = total ? chars / total : 0;
-        const duration = ((words / 170) * 60) / rate;
-        return { frac, elapsed: frac * duration, total: duration, approx: true };
-      },
-      stop() {
-        playing = false;
-        silence();
-        index = 0;
-        offset = 0;
-        highlight(-1);
-        onUpdate();
-      },
-    };
-  }
-
-  // ---------- recorded narration ----------
-
-  function audioEngine(url: string, known: number | null, title: string, onUpdate: () => void, onError: (msg: string) => void): Engine {
-    const a = new Audio();
-    a.preload = 'none';
-    a.src = url;
-    ['timeupdate', 'loadedmetadata', 'play', 'pause', 'ended', 'ratechange'].forEach((ev) => a.addEventListener(ev, onUpdate));
-    a.addEventListener('error', () => onError('The recording couldn’t be loaded.'));
-    const duration = () => (Number.isFinite(a.duration) && a.duration > 0 ? a.duration : known);
-    if ('mediaSession' in navigator) {
-      a.addEventListener('play', () => {
-        navigator.mediaSession.metadata = new MediaMetadata({ title, artist: 'Manas H Arawalli' });
-      });
-    }
-    return {
-      get playing() {
-        return !a.paused && !a.ended;
-      },
-      get finished() {
-        return a.ended;
-      },
-      play() {
-        a.play().catch(() => onError('Press play again to start listening.'));
-      },
-      pause() {
-        a.pause();
-      },
-      restart() {
-        a.currentTime = 0;
-        this.play();
-      },
-      seek(frac) {
-        const d = duration();
-        if (d) a.currentTime = frac * d;
-      },
-      setRate(r) {
-        a.playbackRate = r;
-      },
-      position() {
-        const d = duration();
-        return { frac: d ? a.currentTime / d : 0, elapsed: a.currentTime, total: d, approx: false };
-      },
-      stop() {
-        a.pause();
-        a.currentTime = 0;
-      },
-    };
-  }
-
-  // ---------- the player ----------
-
-  function setup(root: HTMLElement, body: HTMLElement) {
-    root.hidden = false;
+  function setup(root: HTMLElement) {
     const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
-    const start = $<HTMLButtonElement>('[data-start]');
-    const player = $('[data-player]');
+    const audio = $<HTMLAudioElement>('[data-audio]');
     const toggle = $<HTMLButtonElement>('[data-toggle]');
     const seek = $<HTMLInputElement>('[data-seek]');
-    const time = $('[data-time]');
+    const now = $('[data-now]');
+    const totalEl = $('[data-total]');
+    const note = $('[data-note]');
     const status = $('[data-status]');
-    const source = $('[data-source]');
     const rateButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-rate]')];
-    const words = Number(root.dataset.words) || 0;
 
-    let engine: Engine | null = null;
-    let rate = 1;
+    const known = Number(root.dataset.duration) || 0;
+    const posKey = `listen-pos:${audio.getAttribute('src')}`;
     let dragging = false;
-    let lastState = '';
-    try {
-      const saved = Number(localStorage.getItem('listen-rate'));
-      if ([0.75, 1, 1.25, 1.5, 2].includes(saved)) rate = saved;
-    } catch {}
+    let started = false;
+    let failed = false;
+    let lastSaved = 0;
+
+    // Remembered for this visit only (sessionStorage): no tracking.
+    const read = (k: string) => {
+      try {
+        return sessionStorage.getItem(k);
+      } catch {
+        return null;
+      }
+    };
+    const write = (k: string, v: string | null) => {
+      try {
+        v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v);
+      } catch {}
+    };
 
     const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
     const spoken = (s: number) => {
@@ -566,90 +303,147 @@ const rates = [0.75, 1, 1.25, 1.5, 2];
       const sec = Math.floor(s % 60);
       return [m && `${m} minute${m === 1 ? '' : 's'}`, `${sec} second${sec === 1 ? '' : 's'}`].filter(Boolean).join(' ');
     };
+    // The manifest's length is exact (counted while rendering); some browsers
+    // only estimate an MP3's length, so it wins when we have it.
+    const duration = () => known || (Number.isFinite(audio.duration) ? audio.duration : 0);
+    const announce = (msg: string) => (status.textContent = msg);
 
-    const announce = (msg: string) => {
-      status.textContent = msg;
-    };
-    const fail = (msg: string) => {
-      announce(msg);
-      source.textContent = msg;
-    };
-
-    function update() {
-      if (!engine) return;
-      const p = engine.position();
-      toggle.classList.toggle('paused', !engine.playing);
-      toggle.setAttribute('aria-label', engine.playing ? 'Pause' : engine.finished ? 'Play again from the start' : 'Play');
-      if (!dragging) {
-        seek.value = String(Math.round(p.frac * 1000));
-        seek.style.setProperty('--pos', `${(p.frac * 100).toFixed(2)}%`);
-      }
-      const total = p.total ? `${p.approx ? '~' : ''}${clock(p.total)}` : '';
-      time.textContent = total ? `${clock(p.elapsed)} / ${total}` : clock(p.elapsed);
-      seek.setAttribute('aria-valuetext', p.total ? `${spoken(p.elapsed)} of ${p.approx ? 'about ' : ''}${spoken(p.total)}` : spoken(p.elapsed));
-      const state = engine.playing ? 'Playing' : engine.finished ? 'Finished' : 'Paused';
-      if (state !== lastState) {
-        if (lastState) announce(state);
-        lastState = state;
-      }
+    function paint(t = audio.currentTime) {
+      const d = duration();
+      if (!dragging) seek.value = String(Math.floor(t));
+      seek.max = String(Math.ceil(d));
+      seek.style.setProperty('--pos', `${d ? Math.min(100, (t / d) * 100) : 0}%`);
+      seek.setAttribute('aria-valuetext', `${spoken(t)} of ${spoken(d)}`);
+      now.textContent = clock(t);
+      totalEl.textContent = clock(d);
     }
 
-    function makeEngine(): Engine {
-      const url = root.dataset.audio;
-      if (url) {
-        return audioEngine(url, Number(root.dataset.duration) || null, root.dataset.title ?? document.title, update, (msg) => {
-          // A missing recording falls back to the browser voice where possible.
-          if (canSpeak) {
-            engine = speechEngine(body, words, update, fail);
-            source.textContent = 'Read aloud by your browser’s voice';
-            engine.setRate(rate);
-            engine.play();
-          } else fail(msg);
-        });
-      }
-      return speechEngine(body, words, update, fail);
+    function paintButton() {
+      const playing = !audio.paused && !audio.ended;
+      toggle.classList.toggle('paused', !playing);
+      toggle.setAttribute(
+        'aria-label',
+        playing
+          ? 'Pause the narration'
+          : failed
+            ? 'Try loading the narration again'
+            : audio.ended
+              ? 'Play the narration again'
+              : started
+                ? 'Resume the narration'
+                : 'Play the narration',
+      );
     }
+
+    const waiting = (on: boolean) => {
+      toggle.classList.toggle('waiting', on);
+      toggle.setAttribute('aria-busy', String(on));
+    };
 
     function setRate(r: number) {
-      rate = r;
+      audio.defaultPlaybackRate = r;
+      audio.playbackRate = r;
       rateButtons.forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.rate) === r)));
-      engine?.setRate(r);
-      try {
-        localStorage.setItem('listen-rate', String(r));
-      } catch {}
+      write('listen-rate', String(r));
     }
 
-    start.addEventListener('click', () => {
-      engine ??= makeEngine();
-      setRate(rate);
-      start.hidden = true;
-      player.hidden = false;
-      engine.play();
-      toggle.focus();
-      update();
-    });
-    toggle.addEventListener('click', () => (engine?.playing ? engine.pause() : engine?.play()));
-    $('[data-restart]').addEventListener('click', () => engine?.restart());
-    $('[data-stop]').addEventListener('click', () => {
-      engine?.stop();
-      player.hidden = true;
-      start.hidden = false;
-      lastState = '';
-      start.focus();
-    });
+    // Coming back to the piece later in the visit picks up where you left off.
+    const saved = Number(read(posKey));
+    if (saved > 5 && saved < known - 5) {
+      audio.currentTime = saved; // applied once the file starts loading
+      paint(saved);
+      started = true;
+      paintButton();
+    }
+    const savedRate = Number(read('listen-rate'));
+    setRate([0.75, 1, 1.25, 1.5, 2].includes(savedRate) ? savedRate : 1);
+
+    async function play() {
+      if (failed) {
+        failed = false;
+        root.classList.remove('failed');
+        note.textContent = 'Read by an open-source voice';
+        audio.load();
+      }
+      started = true;
+      waiting(audio.readyState < 3);
+      try {
+        // Seeking before the file loaded: honour it now.
+        if (audio.readyState === 0 && Number(seek.value) > 0) audio.currentTime = Number(seek.value);
+        await audio.play();
+      } catch (err) {
+        waiting(false);
+        if ((err as DOMException).name !== 'AbortError') announce('Press play again to start the narration.');
+      }
+      paintButton();
+    }
+
+    toggle.addEventListener('click', () => (audio.paused || audio.ended ? play() : audio.pause()));
     rateButtons.forEach((b) => b.addEventListener('click', () => setRate(Number(b.dataset.rate))));
-    // Show where you'd land while dragging; jump only when you let go.
+
+    // Dragging shows where you'd land; letting go (or arrow keys) moves there.
     seek.addEventListener('input', () => {
       dragging = true;
-      seek.style.setProperty('--pos', `${Number(seek.value) / 10}%`);
+      paint(Number(seek.value));
     });
     seek.addEventListener('change', () => {
       dragging = false;
-      engine?.seek(Number(seek.value) / 1000);
+      audio.currentTime = Number(seek.value);
+      paint(Number(seek.value));
     });
-    setRate(rate);
 
-    // Never keep talking after the reader leaves the page.
-    window.addEventListener('pagehide', () => engine?.stop());
+    audio.addEventListener('timeupdate', () => {
+      paint();
+      if (Math.abs(audio.currentTime - lastSaved) > 3) {
+        lastSaved = audio.currentTime;
+        write(posKey, String(Math.floor(audio.currentTime)));
+      }
+    });
+    audio.addEventListener('loadedmetadata', () => paint());
+    audio.addEventListener('playing', () => {
+      waiting(false);
+      paintButton();
+      announce('Playing');
+    });
+    audio.addEventListener('pause', () => {
+      paintButton();
+      if (!audio.ended && !failed) announce('Paused');
+      write(posKey, String(Math.floor(audio.currentTime)));
+    });
+    audio.addEventListener('waiting', () => waiting(true));
+    audio.addEventListener('canplay', () => waiting(false));
+    audio.addEventListener('ended', () => {
+      waiting(false);
+      paintButton();
+      announce('Finished');
+      write(posKey, null);
+    });
+    audio.addEventListener('error', () => {
+      if (!started) return; // nothing requested yet (preload="none")
+      failed = true;
+      waiting(false);
+      root.classList.add('failed');
+      note.textContent = 'The narration couldn’t load. Press play to try again; the text is all here.';
+      announce('The narration couldn’t load.');
+      paintButton();
+    });
+    window.addEventListener('pagehide', () => {
+      if (started && !audio.ended) write(posKey, String(Math.floor(audio.currentTime)));
+    });
+
+    // Lock-screen and headphone controls on phones.
+    if ('mediaSession' in navigator) {
+      audio.addEventListener('play', () => {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: root.dataset.title ?? document.title, artist: root.dataset.artist });
+      });
+      const skip = (by: number) => () => (audio.currentTime = Math.max(0, Math.min(duration(), audio.currentTime + by)));
+      try {
+        navigator.mediaSession.setActionHandler('play', () => play());
+        navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+        navigator.mediaSession.setActionHandler('seekbackward', skip(-15));
+        navigator.mediaSession.setActionHandler('seekforward', skip(15));
+        navigator.mediaSession.setActionHandler('seekto', (e) => e.seekTime != null && (audio.currentTime = e.seekTime));
+      } catch {}
+    }
   }
 </script>

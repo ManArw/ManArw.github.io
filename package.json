@@ -7,7 +7,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "sync": "node scripts/sync-substack.mjs"
+    "sync": "node scripts/sync-substack.mjs",
+    "narrate": "node narration/narrate.mjs",
+    "narrate:setup": "npm install --prefix narration"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.4.2",

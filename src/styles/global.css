@@ -334,16 +334,6 @@ p {
   overflow-wrap: break-word;
 }
 
-/* The paragraph being read aloud by "Listen" (see Listen.astro). */
-.prose .is-speaking {
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
-  box-shadow: 0 0 0 0.45em color-mix(in srgb, var(--accent) 9%, transparent);
-  transition:
-    background-color var(--dur-2) ease,
-    box-shadow var(--dur-2) ease;
-}
-
 /* Scroll reveal. Content is fully visible without JS or with reduced motion. */
 .js .reveal {
   opacity: 0;

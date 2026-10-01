@@ -1,0 +1,20 @@
+{
+  "blog-japan-ten-days": {
+    "slug": "japan-ten-days",
+    "hash": "ce0f3d7ccf83",
+    "file": "/audio/japan-ten-days.ce0f3d7ccf83.mp3",
+    "duration": 1720.2,
+    "bytes": 10321724,
+    "voice": "af_heart",
+    "generated": "2026-10-01"
+  },
+  "substack-206598202": {
+    "slug": "the-evidence",
+    "hash": "e22ab8e2cf44",
+    "file": "/audio/the-evidence.e22ab8e2cf44.mp3",
+    "duration": 331,
+    "bytes": 1986699,
+    "voice": "af_heart",
+    "generated": "2026-10-01"
+  }
+}
