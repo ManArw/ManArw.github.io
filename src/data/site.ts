@@ -18,7 +18,7 @@ export const site = {
   api: API_BASE,
   instagram: 'https://www.instagram.com/man_arw12/',
   instagramHandle: '@man_arw12',
-  linkedin: 'https://www.linkedin.com/in/manas-h-arawalli',
+  linkedin: 'https://www.linkedin.com/in/manas-h-arawalli-65a1a9212',
   github: 'https://github.com/ManArw',
 };
 
