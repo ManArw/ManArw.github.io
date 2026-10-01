@@ -89,6 +89,7 @@ const byDateDesc = (a, b) => b.date.localeCompare(a.date);
 
 // Fixed key order keeps the committed JSON diffs readable.
 const essayRecord = (e) => ({
+  key: e.key,
   id: e.id ?? null,
   slug: e.slug,
   title: e.title,
@@ -105,22 +106,28 @@ async function syncEssays() {
   const live = await get('Essay feed', '/substack/feed', SUBSTACK.feed, parseFeed);
   if (!live.length) throw new Error('Essay feed parsed but had no posts');
 
+  const bySlug = new Map((await readJson('substack-snapshot.json')).map((e) => [e.slug, e]));
+  const isNew = live.some((e) => !bySlug.has(e.slug));
+
   // The archive API lists every post (the RSS feed only has the latest ~20),
-  // with the stable numeric id that reactions are keyed on.
+  // with Substack's numeric post id, tags and voiceover audio. It's the
+  // endpoint Substack rate-limits hardest, so only ask when there's a new
+  // post to identify, plus one pass a day to catch tag edits and unpublished posts.
   let archive = null;
-  try {
-    archive = new Map();
-    for (let offset = 0; offset < 1000; offset += 50) {
-      const page = await get('Archive', `/substack/archive?offset=${offset}`, `${SUBSTACK.base}/api/v1/archive?sort=new&limit=50&offset=${offset}`, (b) => JSON.parse(b));
-      for (const [slug, meta] of parseArchive(page, SUBSTACK.base)) archive.set(slug, meta);
-      if (page.length < 50) break;
+  if (isNew || new Date().getUTCHours() < 2 || process.env.SYNC_FULL) {
+    try {
+      archive = new Map();
+      for (let offset = 0; offset < 1000; offset += 50) {
+        const page = await get('Archive', `/substack/archive?offset=${offset}`, `${SUBSTACK.base}/api/v1/archive?sort=new&limit=50&offset=${offset}`, (b) => JSON.parse(b));
+        for (const [slug, meta] of parseArchive(page, SUBSTACK.base)) archive.set(slug, meta);
+        if (page.length < 50) break;
+      }
+    } catch (err) {
+      archive = null;
+      warn(`${err.message}. Keeping saved ids and tags.`);
     }
-  } catch (err) {
-    archive = null;
-    warn(`${err.message}. Keeping saved ids and tags.`);
   }
 
-  const bySlug = new Map((await readJson('substack-snapshot.json')).map((e) => [e.slug, e]));
   for (const e of live) bySlug.set(e.slug, { ...bySlug.get(e.slug), ...e });
 
   if (archive) {
@@ -128,18 +135,23 @@ async function syncEssays() {
     // The archive is the full list of published posts, so anything missing from
     // it was unpublished or renamed. Only trust that if it agrees with the feed.
     if (live.every((e) => archive.has(e.slug))) {
-      for (const slug of [...bySlug.keys()]) {
-        if (!archive.has(slug)) {
-          console.log(`Removing ${slug}: no longer in the Substack archive.`);
-          bySlug.delete(slug);
-        }
+      for (const [slug, old] of [...bySlug]) {
+        if (archive.has(slug)) continue;
+        // Renamed on Substack: same post id under a new slug keeps its reactions.
+        const renamed = old.id && [...bySlug.values()].find((e) => e !== old && e.id === old.id);
+        if (renamed && old.key) renamed.key = old.key;
+        console.log(renamed ? `${slug} was renamed to ${renamed.slug}.` : `Removing ${slug}: no longer in the Substack archive.`);
+        bySlug.delete(slug);
       }
     }
   }
 
+  // The reactions key is set once and never changes: Substack's post id when
+  // we know it, otherwise the slug (if the archive API was unavailable when
+  // the post first appeared).
+  for (const e of bySlug.values()) e.key ??= e.id ? `substack-${e.id}` : `substack-${e.slug}`;
+
   const essays = [...bySlug.values()].map(essayRecord).sort(byDateDesc);
-  const missingIds = essays.filter((e) => !e.id).map((e) => e.slug);
-  if (missingIds.length) warn(`No stable id yet for: ${missingIds.join(', ')} (reactions fall back to the slug).`);
   const changed = await save('substack-snapshot.json', essays);
   console.log(`Essays: ${essays.length} saved, ${live.length} in the live feed${changed ? ', snapshot updated' : ', no change'}.`);
   return changed;

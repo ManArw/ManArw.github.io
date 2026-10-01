@@ -60,6 +60,8 @@ export type Note = {
 };
 
 type EssayRecord = {
+  /** Reactions key, assigned once by the sync and never changed. */
+  key?: string;
   id: string | null;
   slug: string;
   title: string;
@@ -124,9 +126,9 @@ function essayPiece(e: EssayRecord): Piece {
   const words = countWords(text);
   const href = `/articles/${e.slug}`;
   return {
-    // The Substack post id survives slug changes; the slug is only a fallback
-    // for a post the sync hasn't matched to an id yet.
-    id: e.id ? `substack-${e.id}` : `substack-${e.slug}`,
+    // Set once by the sync (Substack's post id when known) and carried over
+    // if the post is renamed, so reactions stay attached.
+    id: e.key ?? (e.id ? `substack-${e.id}` : `substack-${e.slug}`),
     kind: 'essay',
     slug: e.slug,
     href,
