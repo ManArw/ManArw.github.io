@@ -87,8 +87,8 @@ all of them):
   (a portrait, never taller than the screen) or `bleed` (edge to edge, cropped to `ratio`).
 - `Spread`: two photos laid like prints, a small one over the corner of a larger one.
 - `Strip`: a row of photos with small labels (times, days); on phones it swipes sideways.
-- `Video`: a short silent loop that only downloads and plays while on screen. `small` is a lighter
-  file for phones.
+- `Video`: a short muted loop that only downloads and plays while on screen. `small` is a lighter
+  file for phones; `sound` adds a button for clips worth hearing (sound never starts on its own).
 
 Every photo opens in a full-screen viewer (arrow keys, swipe, Esc). Keep each component on one line
 and self-closing (`<Figure … />`): the narration and search skip components that way, so adding

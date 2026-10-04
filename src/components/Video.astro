@@ -7,6 +7,10 @@
 //   ratio     the frame's shape, e.g. "21/9" (default square)
 //   mratio    its shape on phones, if different
 //   bleed     edge to edge on most screens, like a full-width photo
+//   sound     the clip has sound worth hearing: adds a sound button. It still
+//             starts muted, and only plays sound after a reader turns it on
+//             (and goes quiet again when it scrolls away). Tall (portrait)
+//             clips are kept shorter than the screen automatically.
 interface Props {
   src: string;
   poster: string;
@@ -17,8 +21,9 @@ interface Props {
   mratio?: string;
   bleed?: boolean;
   position?: string;
+  sound?: boolean;
 }
-const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, position = '50% 50%' } = Astro.props;
+const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, position = '50% 50%', sound = false } = Astro.props;
 ---
 
 <figure class:list={['clip', { bleed }]} style={`--ratio:${ratio};--mratio:${mratio ?? ratio};--pos:${position}`}>
@@ -31,6 +36,14 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
       <svg class="pause" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"></rect><rect x="13.5" y="5" width="4" height="14" rx="1"></rect></svg>
       <svg class="play" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"></path></svg>
     </button>
+    {
+      sound && (
+        <button type="button" class="toggle sound" aria-label="Turn sound on" data-on="false" data-clip-sound>
+          <svg class="off" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"></path><path d="M16 9.5l5 5M21 9.5l-5 5"></path></svg>
+          <svg class="on" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"></path><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"></path></svg>
+        </button>
+      )
+    }
   </div>
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
@@ -38,6 +51,16 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
 <style>
   .frame {
     position: relative;
+  }
+  /* A tall clip never runs taller than the screen. */
+  .clip:not(.bleed) .frame {
+    max-width: calc(82vh * var(--ratio));
+    margin-inline: auto;
+  }
+  @media (max-width: 700px) {
+    .clip:not(.bleed) .frame {
+      max-width: calc(82vh * var(--mratio));
+    }
   }
   video {
     display: block;
@@ -94,6 +117,16 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
   .toggle.paused .play {
     display: block;
   }
+  .sound {
+    right: calc(0.75rem + 44px + 0.5rem);
+  }
+  .sound .on,
+  .sound[data-on='true'] .off {
+    display: none;
+  }
+  .sound[data-on='true'] .on {
+    display: block;
+  }
 </style>
 
 <script>
@@ -109,6 +142,27 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
     video.addEventListener('play', sync);
     video.addEventListener('pause', sync);
     sync();
+
+    // Optional sound: muted until the reader asks, one clip at a time, and
+    // muted again once the clip scrolls out of view.
+    const soundBtn = video.parentElement!.querySelector<HTMLButtonElement>('[data-clip-sound]');
+    const syncSound = () => {
+      if (!soundBtn) return;
+      soundBtn.dataset.on = String(!video.muted);
+      soundBtn.setAttribute('aria-label', video.muted ? 'Turn sound on' : 'Turn sound off');
+    };
+    video.addEventListener('volumechange', syncSound);
+    soundBtn?.addEventListener('click', () => {
+      if (video.muted) {
+        document.querySelectorAll<HTMLVideoElement>('[data-clip]').forEach((v) => (v.muted = true));
+        video.muted = false;
+        userPaused = false;
+        video.play().catch(() => {});
+      } else {
+        video.muted = true;
+      }
+    });
+
     btn.addEventListener('click', () => {
       if (video.paused) {
         userPaused = false;
@@ -121,7 +175,10 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
     new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting && !userPaused) video.play().catch(() => {});
-        else if (!e.isIntersecting) video.pause();
+        else if (!e.isIntersecting) {
+          video.pause();
+          video.muted = true;
+        }
       },
       { threshold: 0.35 },
     ).observe(video);
