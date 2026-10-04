@@ -85,15 +85,28 @@ all of them):
 
 - `Figure`: one photo. In the column by default, or `wide`, `inset` (small, beside the text), `tall`
   (a portrait, never taller than the screen) or `bleed` (edge to edge, cropped to `ratio`).
-- `Spread`: two photos laid like prints, a small one over the corner of a larger one.
-- `Strip`: a row of photos with small labels (times, days); on phones it swipes sideways.
+  `shape="window"` frames it as an aeroplane window whose shade lifts. `motion="…"` adds one
+  scroll-linked movement: `push` (draws you in), `open` (the view opens out of a narrow band),
+  `arc` (revealed by a rising arc), `mist` (comes out of cloud), `rise` (tilts up the photo),
+  `pan` (travels across it; give `mratio` for phones) or `dusk` (brightens out of the dark).
+- `Spread`: two photos laid like prints, a small one tossed over the corner of a larger one.
+- `Strip`: a row of photos with small labels (times, days); on phones it swipes sideways. `pin`
+  holds the screen while scrolling moves along the row (with a running clock if every label is a
+  time); `small` makes little instant prints that develop as they come into view.
 - `Video`: a short muted loop that only downloads and plays while on screen. `small` is a lighter
   file for phones; `sound` adds a button for clips worth hearing (sound never starts on its own).
+- `Chapter`: turns `## Day 3 · Meeting Mount Fuji` headings into chapter titles. Opt in with
+  `export const components = { h2: Chapter };` in the post.
+- `Cinematic`: once, at the end of a post (`<Cinematic cover={photo} />`): the title and cover open
+  like a film, step counts tick up, and the closing quote lights up word by word.
 
-Every photo opens in a full-screen viewer (arrow keys, swipe, Esc). Keep each component on one line
-and self-closing (`<Figure … />`): the narration and search skip components that way, so adding
-photos never changes a narrated post's audio. Put photos in `src/assets/` (Astro makes the
-responsive sizes); strip GPS from phone originals first, as the Japan media script does.
+Every photo and clip casts a soft glow of its own colours on the page, and opens in a full-screen
+viewer (arrow keys, swipe, Esc) that it grows out of and shrinks back into. All the movement is CSS
+and a little JavaScript, free; browsers without scroll-linked animation (and readers who prefer
+reduced motion) get the same photos, still. Keep each component on one line and self-closing
+(`<Figure … />`): the narration and search skip components that way, so adding photos never
+changes a narrated post's audio. Put photos in `src/assets/` (Astro makes the responsive sizes);
+strip GPS from phone originals first, as the Japan media script does.
 
 `cover:` adds a header photo; `featured: true` puts the post at the top of the Blog page.
 

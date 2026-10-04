@@ -2,14 +2,24 @@
 // A run of photos read left to right, like frames on a contact sheet, each
 // with an optional small label (a time, a day). On wide screens the frames
 // share one row at the same height; on phones the row scrolls sideways and
-// snaps frame by frame, with the next one peeking in. `small` makes a short
-// row of little prints that fits the reading column on every screen.
+// snaps frame by frame, with the next one peeking in.
 //
-//   <Strip frames={[{ src, alt, label: '8:20' }, …]} caption="…" />
+//   <Strip frames={[{ src, alt, label: '8:20 am' }, …]} caption="…" />
+//
+// `small`  a short row of little instant prints that fits the reading column
+//          on every screen; each one develops when it comes into view.
+// `pin`    the row holds the screen while you scroll, and scrolling moves you
+//          along it, one photo at a time. If every label is a time ("8:20 am")
+//          a clock above the row runs from the first to the last. Supporting
+//          browsers only, and never with reduced motion: elsewhere it is the
+//          ordinary row.
+import { createHash } from 'node:crypto';
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import { zoomable, fit } from '../lib/zoom';
+import { tone } from '../lib/tone';
 import '../styles/lightbox.css';
+import '../styles/media.css';
 
 type Frame = { src: ImageMetadata; alt: string; label?: string };
 interface Props {
@@ -18,34 +28,82 @@ interface Props {
   /** Names the row for screen readers. */
   label?: string;
   small?: boolean;
+  pin?: boolean;
 }
-const { frames, caption, label, small = false } = Astro.props;
-const zooms = await Promise.all(frames.map((f) => zoomable(f.src)));
-const total = frames.reduce((n, f) => n + f.src.width / f.src.height, 0);
+const { frames, caption, label, small = false, pin: pinned = false } = Astro.props;
+const pin = pinned && !small && frames.length > 1;
+const [zooms, glows] = await Promise.all([Promise.all(frames.map((f) => zoomable(f.src))), Promise.all(frames.map((f) => tone(f.src)))]);
+const ratios = frames.map((f) => f.src.width / f.src.height);
+const total = ratios.reduce((a, b) => a + b, 0);
+
+// A pinned row moves through keyframes generated for its own frames: at
+// step i of n, frame i sits in the middle of the screen at full strength.
+const n = frames.length;
+const id = pin ? 'pin-' + createHash('sha1').update(frames.map((f) => f.src.src).join('|')).digest('hex').slice(0, 6) : undefined;
+const times = frames.map((f) => /^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)?$/i.exec(f.label?.trim() ?? ''));
+const suffix = times[0]?.[3] ?? '';
+const minutes = pin && times.every((t) => t && (t[3] ?? '') === suffix) ? times.map((t) => +t![1] * 60 + +t![2]) : null;
+// Each photo rests in the middle for a little of the scrolling, so the
+// clock reads its exact time while it's there.
+const dwell = Math.min(0.07, 0.25 / (n - 1));
+const at = (i: number) => {
+  const t = i / (n - 1);
+  return [Math.max(0, t - dwell), Math.min(1, t + dwell)].map((x) => `${+(x * 100).toFixed(3)}%`).join(',');
+};
+const centre = (i: number) => [...Array(i).keys()].map((j) => `var(--w${j}) + var(--gap)`).concat(`var(--w${i}) / 2`).join(' + ');
+const widthVars = ratios.map((ar, i) => `--w${i}:min(82vw, calc(var(--fh) * ${ar.toFixed(4)}))`).join(';');
+const css = pin
+  ? `@keyframes ${id}-row{${frames.map((_, i) => `${at(i)}{translate:calc(50vw - (${centre(i)})) 0}`).join('')}}` +
+    frames.map((_, i) => `@keyframes ${id}-f${i}{${frames.map((_, k) => `${at(k)}{opacity:${k === i ? 1 : 0.34};scale:${k === i ? 1 : 0.9}}`).join('')}}`).join('') +
+    (minutes ? `@keyframes ${id}-clock{${minutes.map((m, i) => `${at(i)}{--mins:${m}}`).join('')}}` : '') +
+    `@supports (animation-timeline: view()){@media (prefers-reduced-motion: no-preference){` +
+    `#${id} .row{animation-name:${id}-row}` +
+    frames.map((_, i) => `#${id} .frame:nth-child(${i + 1}){animation-name:${id}-f${i}}`).join('') +
+    (minutes ? `#${id} .hm{animation-name:${id}-clock}` : '') +
+    `}}`
+  : '';
 ---
 
-<figure class:list={['strip', { small }]}>
-  <div class="row" role="group" aria-label={label}>
+<figure id={id} class:list={['strip', { small, pin }]} style={pin ? `--n:${n}` : undefined}>
+  <div class="stage">
     {
-      frames.map((f, i) => {
-        const ar = f.src.width / f.src.height;
-        return (
-          <div class="frame reveal" style={`--ar:${ar.toFixed(4)};--delay:${i * 110}ms`}>
-            <a class="zoom" href={zooms[i].href} data-zoom data-srcset={zooms[i].srcset} data-caption={[f.label, caption].filter(Boolean).join(' · ')}>
-              <Image
-                src={f.src}
-                alt={f.alt}
-                widths={fit(f.src, small ? [240, 400, 600] : [400, 700, 1100])}
-                sizes={small ? '(min-width: 700px) 12rem, 30vw' : `(min-width: 760px) ${((64 * ar) / total).toFixed(1)}rem, ${Math.round(ar * 60)}vw`}
-              />
-            </a>
-            {f.label && <span class="label">{f.label}</span>}
-          </div>
-        );
-      })
+      minutes && (
+        <p class="clock" aria-hidden="true">
+          <span class="hm" />
+          {suffix && <span class="ampm">{suffix}</span>}
+        </p>
+      )
     }
+    <div class="row" role="group" aria-label={label} style={pin ? widthVars : undefined}>
+      {
+        frames.map((f, i) => {
+          const ar = ratios[i];
+          return (
+            <div class:list={['frame', small ? 'cue' : !pin && 'reveal']} style={`--ar:${ar.toFixed(4)};--delay:${i * (small ? 420 : 110)}ms;${small ? '' : glows[i]}`}>
+              <a class="zoom" href={zooms[i].href} data-zoom data-srcset={zooms[i].srcset} data-caption={[f.label, caption].filter(Boolean).join(' · ')}>
+                {!small && <span class="glow" aria-hidden="true" />}
+                <Image
+                  src={f.src}
+                  alt={f.alt}
+                  widths={fit(f.src, small ? [240, 400, 600] : pin ? [480, 800, 1200, 1600] : [400, 700, 1100])}
+                  sizes={
+                    small
+                      ? '(min-width: 700px) 12rem, 30vw'
+                      : pin
+                        ? `(min-width: 760px) ${(36 * ar).toFixed(1)}rem, 82vw`
+                        : `(min-width: 760px) ${((64 * ar) / total).toFixed(1)}rem, ${Math.round(ar * 60)}vw`
+                  }
+                />
+              </a>
+              {f.label && <span class="label">{f.label}</span>}
+            </div>
+          );
+        })
+      }
+    </div>
+    {caption && <figcaption>{caption}</figcaption>}
   </div>
-  {caption && <figcaption>{caption}</figcaption>}
+  {pin && <style is:inline set:html={css} />}
 </figure>
 
 <style>
@@ -68,6 +126,9 @@ const total = frames.reduce((n, f) => n + f.src.width / f.src.height, 0);
     object-fit: cover;
     border-radius: 6px;
   }
+  .frame .glow {
+    border-radius: 6px;
+  }
   .label {
     display: block;
     margin-top: var(--space-2);
@@ -81,6 +142,9 @@ const total = frames.reduce((n, f) => n + f.src.width / f.src.height, 0);
     width: min(100%, var(--measure));
     margin-inline: auto;
     margin-top: var(--space-3);
+  }
+  .clock {
+    display: none;
   }
 
   /* Phones: one frame at a time, swiped sideways, edge to edge. */
@@ -109,37 +173,186 @@ const total = frames.reduce((n, f) => n + f.src.width / f.src.height, 0);
     }
   }
 
-  /* Little prints, in the reading column. */
+  /* ---------- Pinned: the row holds the screen while you scroll ----------
+     The figure is as tall as the scrolling it takes to travel the row; the
+     stage inside it sticks to the screen meanwhile. The keyframes for each
+     row are generated above. Longhands on purpose (see Figure.astro). */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .strip.pin {
+        --fh: min(62svh, 36rem);
+        --gap: clamp(1.5rem, 5vw, 4rem);
+        width: 100vw;
+        height: calc(100svh + (var(--n) - 1) * 78svh);
+        margin-inline: calc(50% - 50vw);
+        view-timeline-name: --pin;
+        view-timeline-axis: block;
+      }
+      .strip.pin .stage {
+        position: sticky;
+        top: 0;
+        height: 100svh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: clamp(0.75rem, 3svh, 2rem);
+        padding-top: 4rem;
+        overflow: clip;
+      }
+      .strip.pin .row,
+      .strip.pin .frame,
+      .pin .hm {
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: --pin;
+        animation-range: contain 0% contain 100%;
+      }
+      .strip.pin .row {
+        width: max-content;
+        gap: var(--gap);
+        align-items: center;
+        padding: 0;
+        overflow: visible;
+        scroll-snap-type: none;
+      }
+      .strip.pin .frame {
+        flex: none;
+        width: min(82vw, calc(var(--fh) * var(--ar)));
+      }
+      /* Inside the held stage a scroll-linked glow would never change. */
+      .strip.pin .glow {
+        animation: none;
+        opacity: 0.5;
+      }
+      .strip.pin .label {
+        text-align: center;
+      }
+      .strip.pin figcaption {
+        width: min(100% - 2rem, var(--measure));
+        margin-top: 0;
+      }
+      .strip.pin .clock {
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        gap: 0.35em;
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: var(--step-4);
+        font-weight: 200;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+        color: var(--ink);
+      }
+      .pin .ampm {
+        font-size: 0.32em;
+        font-weight: 400;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .pin .hm {
+        --hh: calc((var(--mins) - 30) / 60);
+        --mm: calc(var(--mins) - var(--hh) * 60);
+        counter-reset: hh var(--hh) mm var(--mm);
+      }
+      .pin .hm::before {
+        content: counter(hh) ':' counter(mm, decimal-leading-zero);
+      }
+    }
+  }
+  @property --mins {
+    syntax: '<integer>';
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --hh {
+    syntax: '<integer>';
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --mm {
+    syntax: '<integer>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  /* Little instant prints, in the reading column. Each develops from a pale
+     haze into the photo when it comes into view (src/lib/cue.ts). */
   .small {
     width: 100%;
     margin-inline: 0;
   }
   .small .row {
     justify-content: center;
-    gap: clamp(0.5rem, 2vw, 1rem);
+    gap: clamp(0.6rem, 2.4vw, 1.25rem);
   }
   .small .frame {
     flex: 0 1 12rem;
+    padding: 0.4rem 0.4rem 0;
+    background: #f2eee6;
+    border-radius: 3px;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 14px 30px rgba(0, 0, 0, 0.45);
   }
   .small .frame:nth-child(odd) {
-    rotate: -1.2deg;
+    rotate: -1.6deg;
   }
   .small .frame:nth-child(even) {
-    rotate: 1deg;
-    translate: 0 0.4rem;
+    rotate: 1.2deg;
+    translate: 0 0.5rem;
   }
   .small .frame :global(img) {
-    border-radius: 3px;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+    border-radius: 1px;
+    background-color: #2a2f38;
   }
   .small .label {
+    margin: 0;
+    padding: 0.55em 0 0.7em;
     text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: #4a4f58;
   }
   .small figcaption {
     margin-top: var(--space-4);
+  }
+  :global(.js) .small .cue {
+    transition:
+      opacity 0.6s ease var(--delay),
+      transform 1s cubic-bezier(0.2, 0.9, 0.3, 1.1) var(--delay);
+  }
+  :global(.js) .small .cue :global(img) {
+    transition: filter 3.6s cubic-bezier(0.3, 0.1, 0.3, 1) calc(var(--delay) + 0.3s);
+  }
+  :global(.js) .small .cue:not(.is-in) {
+    opacity: 0;
+    transform: translateY(-1.5rem) rotate(-4deg);
+  }
+  :global(.js) .small .cue:not(.is-in) :global(img) {
+    filter: brightness(1.55) contrast(0.32) saturate(0.1) sepia(0.35);
   }
 </style>
 
 <script>
   import '../lib/lightbox';
+  import '../lib/cue';
+
+  // A pinned row moves with the page's scroll, not its own, so a keyboard
+  // user tabbing to a photo in it gets scrolled to where that photo is in
+  // the middle of the screen.
+  if (CSS.supports('animation-timeline: view()') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll<HTMLElement>('.strip.pin').forEach((fig) => {
+      const links = [...fig.querySelectorAll<HTMLAnchorElement>('a.zoom')];
+      fig.addEventListener('focusin', (e) => {
+        const i = links.indexOf(e.target as HTMLAnchorElement);
+        if (i < 0) return;
+        const top = fig.getBoundingClientRect().top + window.scrollY;
+        const run = fig.offsetHeight - window.innerHeight;
+        window.scrollTo({ top: top + (i / (links.length - 1)) * run, behavior: 'instant' });
+      });
+    });
+  }
 </script>

@@ -1,8 +1,29 @@
 /* The full-screen photo viewer (src/lib/lightbox.ts). Imported by the photo
    components, so it only ships on pages that have photos. */
 
+/* While the viewer is open the page behind it doesn't scroll. The lock goes on
+   <body> (whose overflow the browser applies to the viewport) rather than on
+   <html>, so sticky elements, like a pinned row of photos, stay put; the
+   gutter keeps the page from shifting sideways as the scrollbar goes. */
 .lb-lock {
+  scrollbar-gutter: stable;
+}
+.lb-lock body {
   overflow: hidden;
+}
+
+/* The photo's flight between the page and the viewer (lightbox.ts names the
+   two ends of it). Both ends fill the moving frame, so a cropped photo on
+   the page uncrops smoothly into the whole photo, and back. */
+::view-transition-group(lb-photo) {
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+::view-transition-old(lb-photo),
+::view-transition-new(lb-photo) {
+  height: 100%;
+  object-fit: cover;
+  animation-duration: 0.3s;
 }
 
 .lb {

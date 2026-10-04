@@ -13,6 +13,8 @@ import Figure from '../../components/Figure.astro';
 import Video from '../../components/Video.astro';
 import Spread from '../../components/Spread.astro';
 import Strip from '../../components/Strip.astro';
+import Chapter from '../../components/Chapter.astro';
+import Cinematic from '../../components/Cinematic.astro';
 import fujiClouds from '../../assets/fuji.jpg';
 import fujiDusk from '../../assets/japan/fuji-dusk.jpg';
 import fujiTrain from '../../assets/japan/fuji-shinkansen.jpg';
@@ -38,13 +40,15 @@ import skytreeFujiSunset from '../../assets/japan/skytree-fuji-sunset.jpg';
 import skytreeCityNight from '../../assets/japan/skytree-city-night.jpg';
 import kawaguchikoRainbow from '../../assets/japan/kawaguchiko-rainbow.jpg';
 
+export const components = { h2: Chapter };
+
 > These ten days in Japan gave me more memories than I could have imagined. This is my attempt to capture them, just the way I felt them, honest and warm, exactly as they happened.
 
 ## Day 1 · Touchdown in Tokyo
 
 *Waking up above the clouds felt like stepping into a dream.*
 
-<Figure inset src={wingDawn} alt="An aeroplane wing against a violet dawn sky, with clouds catching the first light far below." caption="Above the clouds, the first morning." />
+<Figure inset shape="window" src={wingDawn} alt="An aeroplane wing against a violet dawn sky, with clouds catching the first light far below." caption="Above the clouds, the first morning." />
 
 I woke up to a sunrise floating above the clouds, unsure when I had even fallen asleep. The sky outside my window glowed a soft violet, maybe the tint on the glass, maybe just the magic of flying into a new country. Either way, it felt unreal.
 
@@ -124,7 +128,7 @@ We took plenty of photos and walked along the moat before entering the Imperial 
 
 ### A Meal Beneath the Skytree
 
-<Figure inset src={skytreeFromBelow} alt="The Tokyo Skytree seen from the street below, rising between an office block and utility poles under a grey sky." caption="Looking up at the Skytree that afternoon." />
+<Figure inset motion="rise" src={skytreeFromBelow} alt="The Tokyo Skytree seen from the street below, rising between an office block and utility poles under a grey sky." caption="Looking up at the Skytree that afternoon." />
 
 A quick 15-minute metro ride later, we arrived, at Basement Level 2 of the station. We went looking for the Indian restaurant AMARA but, of course, exited from the wrong side. After realizing our mistake, we looped back through the station and found the huge mall beside the Tokyo Skytree.
 
@@ -142,7 +146,7 @@ Another lift took us up to 450 meters, where the sky had grown darker but the vi
 
 From there, we could still spot Mount Fuji, gently outlined against a red horizon. Planes soared by every few minutes. The city stretched endlessly beneath us, glowing, alive, mesmerizing. We stayed for nearly an hour, clicking photos and simply absorbing the view. I bought a small keepsake: a Tokyo Skytree coin on a chain, something to remind me of that height, that moment.
 
-<Figure bleed ratio="21/9" src={skytreeCityNight} alt="Tokyo at night from high above: a dense grid of lit streets and buildings stretching to the horizon." caption="The city below, twelve minutes later." />
+<Figure bleed ratio="21/9" mratio="4/5" motion="pan" src={skytreeCityNight} alt="Tokyo at night from high above: a dense grid of lit streets and buildings stretching to the horizon." caption="The city below, twelve minutes later." />
 
 Returning to the 350-meter deck was chaos again. It took almost thirty minutes to get down, but once we finally made it outside, we sat at one of the tables, ate some Indian snacks, and laughed about the day.
 
@@ -178,7 +182,7 @@ Majestic. Massive. Completely unreal.
 
 I froze. For a moment, I forgot to breathe. The perfect snow-capped cone rose against the sky, and I couldn’t take my eyes off it. I fumbled for my camera and snapped a few pictures as we crossed a bridge, where autumn-colored trees framed the entire view like a painting.
 
-<Figure src={fujiClouds} alt="The snow-capped summit of Mount Fuji rising above a band of cloud under a pale blue sky." caption="Fuji-san, floating on its own weather." />
+<Figure motion="mist" src={fujiClouds} alt="The snow-capped summit of Mount Fuji rising above a band of cloud under a pale blue sky." caption="Fuji-san, floating on its own weather." />
 
 It didn’t feel real, but it was.
 
@@ -196,7 +200,7 @@ We began walking through the village toward the Mt. Fuji Ropeway. Light drizzle 
 
 And above it, a rainbow.
 
-<Figure wide src={kawaguchikoRainbow} alt="A faint rainbow over wooded mountains across Lake Kawaguchiko, a long bridge on the water and a Lake Kawaguchi sign by a car park in the foreground." caption="Lake Kawaguchiko, and the rainbow over the far shore." />
+<Figure wide motion="arc" src={kawaguchikoRainbow} alt="A faint rainbow over wooded mountains across Lake Kawaguchiko, a long bridge on the water and a Lake Kawaguchi sign by a car park in the foreground." caption="Lake Kawaguchiko, and the rainbow over the far shore." />
 
 A full, perfect arc, waiting for us.
 
@@ -214,7 +218,7 @@ We joined Amma and Appa for lunch as it began to drizzle again. Hot tea became o
 
 We hopped onto a tourist bus that took us across the village to a lakeside garden. And this, this was the view we had come for.
 
-<Figure bleed ratio="3/2" position="50% 100%" src={fujiTorii} alt="Mount Fuji, clear and snow-capped across a lake, framed by a small red torii under a wide blue sky, red autumn leaves at its foot." caption="Through a small torii, across the lake." />
+<Figure bleed ratio="3/2" position="50% 100%" motion="open" src={fujiTorii} alt="Mount Fuji, clear and snow-capped across a lake, framed by a small red torii under a wide blue sky, red autumn leaves at its foot." caption="Through a small torii, across the lake." />
 
 Fuji stood clear, flawless, framed by the lake and gardens.
 
@@ -404,7 +408,7 @@ We started our day by heading to Kiyomizudera. The walk leading up to the temple
 
 As we climbed further, we passed what looked like a small castle structure and a few pagodas rising above the trees. Kiyomizudera itself was peaceful, grand and full of character. We spent some time exploring, taking in the views, and enjoying the atmosphere.
 
-<Strip label="Three photographs from the morning at Kiyomizudera" frames={[{ src: kiyomizuDragon, alt: 'A dark bronze dragon statue in front of an orange temple building, the low sun flaring between its pillars.', label: '8:20 am' }, { src: kiyomizuHall, alt: 'The great wooden hall of Kiyomizudera and its terrace above autumn trees, the city and hills far below, a crowd in the foreground.', label: '8:54 am' }, { src: kiyomizuLanterns, alt: 'Two stone lanterns in a quiet clearing among thin trees, fallen leaves on the ground.', label: '9:09 am' }]} caption="Kiyomizudera, the morning of 7 November." />
+<Strip pin label="Three photographs from the morning at Kiyomizudera" frames={[{ src: kiyomizuDragon, alt: 'A dark bronze dragon statue in front of an orange temple building, the low sun flaring between its pillars.', label: '8:20 am' }, { src: kiyomizuHall, alt: 'The great wooden hall of Kiyomizudera and its terrace above autumn trees, the city and hills far below, a crowd in the foreground.', label: '8:54 am' }, { src: kiyomizuLanterns, alt: 'Two stone lanterns in a quiet clearing among thin trees, fallen leaves on the ground.', label: '9:09 am' }]} caption="Kiyomizudera, the morning of 7 November." />
 
 ### Souvenirs and a Quick Return
 
@@ -442,7 +446,7 @@ From Ginza, we headed toward the place where the Tokyo city cruise started. The 
 
 Later, we reached Odaiba and spent time at the beach side viewpoint. The sunset painted the sky in warm colors but the wind was brutal, cold air sweeping across the water and hitting our faces. Even then, the place felt beautiful, a quiet farewell from Tokyo.
 
-<Figure bleed ratio="16/10" src={odaibaNight} alt="The four of us standing together at a waterfront railing at night, a suspension bridge lit blue and the lights of the city across the water behind us." caption="Odaiba after dark, on the last full day." />
+<Figure bleed ratio="16/10" motion="dusk" src={odaibaNight} alt="The four of us standing together at a waterfront railing at night, a suspension bridge lit blue and the lights of the city across the water behind us." caption="Odaiba after dark, on the last full day." />
 
 ### The Final Walk Home
 
@@ -489,3 +493,5 @@ We came home with heavier suitcases and fuller hearts, and as the plane lifted o
 > In the end, it wasn’t Japan that made the trip special, it was the people I saw it with.
 
 <Strip small label="The four of us on Day 2, Day 7 and Day 8" frames={[{ src: fourOnABench, alt: 'The four of us on a bench in Tokyo.', label: 'Day 2' }, { src: kyotoFour, alt: 'The four of us in Kyoto.', label: 'Day 7' }, { src: odaibaNight, alt: 'The four of us at Odaiba at night.', label: 'Day 8' }]} caption="Four hearts, one Japan." />
+
+<Cinematic cover={fujiDusk} />

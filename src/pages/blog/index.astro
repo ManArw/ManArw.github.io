@@ -3,6 +3,7 @@ import { Image } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
 import PostList from '../../components/PostList.astro';
 import { getPosts, getNotes } from '../../lib/content';
+import { tone } from '../../lib/tone';
 
 const posts = await getPosts();
 const featured = posts.find((p) => p.entry?.data.featured && p.cover && typeof p.cover !== 'string');
@@ -10,6 +11,8 @@ const rest = posts.filter((p) => p !== featured);
 const notes = getNotes();
 const latestNote = notes.find((n) => n.body.length < 220);
 const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
+// The featured post's cover glows in its own colours (src/lib/tone.ts).
+const glow = featured?.cover && typeof featured.cover !== 'string' ? await tone(featured.cover) : '';
 ---
 
 <Base title="Blog" description="Shorter posts, notes, and travel writing from Manas H Arawalli.">
@@ -22,7 +25,7 @@ const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' })
 
     {
       featured && featured.cover && typeof featured.cover !== 'string' && (
-        <a class="feature reveal" href={featured.href}>
+        <a class="feature reveal" href={featured.href} style={glow}>
           <Image src={featured.cover} alt={featured.coverAlt ?? ''} widths={[640, 1024, 1400]} sizes="(min-width: 1100px) 68rem, 100vw" />
           <span class="feature-body">
             <span class="eyebrow">
@@ -71,7 +74,27 @@ const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' })
     width: 100%;
     aspect-ratio: 16 / 8;
     object-fit: cover;
+    background-image: var(--ph, none);
     transition: transform 1.2s var(--ease-out);
+  }
+  /* The light of the cover photo spilling onto the page around it. */
+  .feature {
+    box-shadow:
+      -2.4rem -1.6rem 6rem -1.2rem color-mix(in srgb, var(--g1, transparent) 45%, transparent),
+      2.4rem -1.6rem 6rem -1.2rem color-mix(in srgb, var(--g2, transparent) 45%, transparent),
+      -2.4rem 1.6rem 6rem -1.2rem color-mix(in srgb, var(--g3, transparent) 45%, transparent),
+      2.4rem 1.6rem 6rem -1.2rem color-mix(in srgb, var(--g4, transparent) 45%, transparent);
+  }
+  /* As the card arrives, its photo settles into the frame. */
+  @media (prefers-reduced-motion: no-preference) {
+    .feature.is-in :global(img) {
+      animation: feature-settle 2.4s var(--ease-out) backwards;
+    }
+  }
+  @keyframes feature-settle {
+    from {
+      scale: 1.1;
+    }
   }
   .feature:hover :global(img) {
     transform: scale(1.03);

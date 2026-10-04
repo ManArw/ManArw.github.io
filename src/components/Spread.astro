@@ -4,11 +4,17 @@
 // print overlaps the bottom edge of the large one instead of sitting beside
 // it. Both open in the full-screen viewer.
 //
+// The small print is tossed onto the large one when it comes into view and
+// comes to rest at a slight angle; as you scroll it drifts a little faster
+// than the photo beneath it, the way something nearer to you does.
+//
 //   <Spread a={{ src: place, alt: '…' }} b={{ src: detail, alt: '…' }} caption="…" />
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import { zoomable, fit } from '../lib/zoom';
+import { tone } from '../lib/tone';
 import '../styles/lightbox.css';
+import '../styles/media.css';
 
 type Photo = { src: ImageMetadata; alt: string };
 interface Props {
@@ -18,15 +24,16 @@ interface Props {
   flip?: boolean;
 }
 const { a, b, caption, flip = false } = Astro.props;
-const [za, zb] = await Promise.all([zoomable(a.src), zoomable(b.src)]);
+const [za, zb, glow] = await Promise.all([zoomable(a.src), zoomable(b.src), tone(a.src)]);
 ---
 
 <figure class:list={['spread', { flip }]}>
   <div class="prints">
-    <a class="zoom print a" href={za.href} data-zoom data-srcset={za.srcset} data-caption={caption ?? ''}>
+    <a class="zoom print a" href={za.href} data-zoom data-srcset={za.srcset} data-caption={caption ?? ''} style={glow}>
+      <span class="glow" aria-hidden="true"></span>
       <Image src={a.src} alt={a.alt} widths={fit(a.src, [640, 1024, 1600])} sizes="(min-width: 860px) 36rem, 100vw" />
     </a>
-    <a class="zoom print b reveal" href={zb.href} data-zoom data-srcset={zb.srcset} data-caption={caption ?? ''}>
+    <a class="zoom print b cue" href={zb.href} data-zoom data-srcset={zb.srcset} data-caption={caption ?? ''}>
       <Image src={b.src} alt={b.alt} widths={fit(b.src, [400, 640, 1000])} sizes="(min-width: 860px) 22rem, 60vw" />
     </a>
   </div>
@@ -49,21 +56,30 @@ const [za, zb] = await Promise.all([zoomable(a.src), zoomable(b.src)]);
     max-height: none;
     border-radius: 8px;
   }
+  .a .glow {
+    border-radius: 8px;
+  }
   .a {
     grid-column: 1 / 9;
     grid-row: 1;
   }
+  /* Tilted about its outer top corner, so the turn never pushes it past the
+     edge of the screen on phones. */
   .b {
     grid-column: 8 / 13;
     grid-row: 1;
     z-index: 1;
     margin-bottom: -2.5rem;
+    rotate: 1.6deg;
+    transform-origin: top right;
   }
   .flip .a {
     grid-column: 5 / 13;
   }
   .flip .b {
     grid-column: 1 / 6;
+    rotate: -1.6deg;
+    transform-origin: top left;
   }
   .b :global(img) {
     box-shadow:
@@ -93,8 +109,48 @@ const [za, zb] = await Promise.all([zoomable(a.src), zoomable(b.src)]);
       margin: -1rem auto 0 0;
     }
   }
+
+  /* The toss: the print arrives from above, turning, and settles with a
+     small bounce (src/lib/cue.ts adds .is-in). */
+  :global(.js) .b.cue {
+    transition:
+      opacity 0.45s ease,
+      transform 1.15s
+        linear(0, 0.2 6%, 0.56 14%, 0.86 22%, 1.03 30%, 1.09 37%, 1.07 44%, 1.02 53%, 0.99 63%, 1 80%, 1);
+  }
+  /* (No sideways offset: on phones the print sits at the screen's edge, and
+     anything pushed past it would widen the page.) */
+  :global(.js) .b.cue:not(.is-in) {
+    opacity: 0;
+    transform: translateY(-24%) rotate(7deg) scale(1.03);
+  }
+  :global(.js) .flip .b.cue:not(.is-in) {
+    transform: translateY(-24%) rotate(-7deg) scale(1.03);
+  }
+
+  /* Depth: the nearer print drifts faster than the one beneath it. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .b {
+        animation-name: spread-depth;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+      }
+    }
+  }
+  @keyframes spread-depth {
+    from {
+      translate: 0 2.2rem;
+    }
+    to {
+      translate: 0 -2.2rem;
+    }
+  }
 </style>
 
 <script>
   import '../lib/lightbox';
+  import '../lib/cue';
 </script>

@@ -11,6 +11,12 @@
 //             starts muted, and only plays sound after a reader turns it on
 //             (and goes quiet again when it scrolls away). Tall (portrait)
 //             clips are kept shorter than the screen automatically.
+//
+// Like the photos, a clip casts a soft glow of its colours on the page
+// (src/styles/media.css); while it plays, the glow follows the picture.
+import { tone } from '../lib/tone';
+import '../styles/media.css';
+
 interface Props {
   src: string;
   poster: string;
@@ -24,10 +30,12 @@ interface Props {
   sound?: boolean;
 }
 const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, position = '50% 50%', sound = false } = Astro.props;
+const glow = await tone(poster);
 ---
 
-<figure class:list={['clip', { bleed }]} style={`--ratio:${ratio};--mratio:${mratio ?? ratio};--pos:${position}`}>
+<figure class:list={['clip', { bleed }]} style={`--ratio:${ratio};--mratio:${mratio ?? ratio};--pos:${position};${glow}`}>
   <div class="frame">
+    <span class="glow" aria-hidden="true" data-clip-glow></span>
     <video muted loop playsinline preload="none" poster={poster} aria-label={label} data-clip>
       {small && <source src={src} type="video/mp4" media="(min-width: 701px)" />}
       <source src={small ?? src} type="video/mp4" />
@@ -92,6 +100,22 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
     width: min(100% - 2rem, var(--measure));
     margin-inline: auto;
   }
+  /* The glow eases between the colours sampled from the playing clip. */
+  .glow {
+    transition:
+      --g1 0.9s linear,
+      --g2 0.9s linear,
+      --g3 0.9s linear,
+      --g4 0.9s linear;
+  }
+  .bleed .glow {
+    border-radius: 0;
+  }
+  @media (min-width: 80rem) {
+    .bleed .glow {
+      border-radius: 14px;
+    }
+  }
   .toggle {
     position: absolute;
     right: 0.75rem;
@@ -130,8 +154,40 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
 </style>
 
 <script>
+  import { lift } from '../lib/glow';
+
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+
+  // The glow follows the picture while a clip plays: a few times a second
+  // the current frame is drawn tiny and each quarter of it averaged.
+  const W = 16;
+  const H = 10;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = reduce ? null : canvas.getContext('2d', { willReadFrequently: true });
+  if (ctx) ctx.imageSmoothingQuality = 'high';
+  const sample = (video: HTMLVideoElement, glow: HTMLElement) => {
+    if (!ctx || video.readyState < 2) return;
+    try {
+      ctx.drawImage(video, 0, 0, W, H);
+      const px = ctx.getImageData(0, 0, W, H).data;
+      const sums = [0, 1, 2, 3].map(() => [0, 0, 0]);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const k = (y * W + x) * 4;
+          const q = sums[(y < H / 2 ? 0 : 2) + (x < W / 2 ? 0 : 1)];
+          q[0] += px[k];
+          q[1] += px[k + 1];
+          q[2] += px[k + 2];
+        }
+      }
+      sums.forEach((q, i) => glow.style.setProperty(`--g${i + 1}`, lift(q.map((v) => v / ((W * H) / 4)))));
+    } catch {
+      // A frame that can't be read yet: keep the colours it has.
+    }
+  };
   document.querySelectorAll<HTMLVideoElement>('[data-clip]').forEach((video) => {
     const btn = video.parentElement!.querySelector<HTMLButtonElement>('[data-clip-toggle]')!;
     let userPaused = reduce || saveData;
@@ -162,6 +218,17 @@ const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, 
         video.muted = true;
       }
     });
+
+    const glow = video.parentElement!.querySelector<HTMLElement>('[data-clip-glow]');
+    let timer = 0;
+    if (ctx && glow) {
+      video.addEventListener('playing', () => {
+        clearInterval(timer);
+        sample(video, glow);
+        timer = window.setInterval(() => sample(video, glow), 450);
+      });
+      video.addEventListener('pause', () => clearInterval(timer));
+    }
 
     btn.addEventListener('click', () => {
       if (video.paused) {

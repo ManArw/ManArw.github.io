@@ -1,6 +1,7 @@
 ---
 // Optimised photo with a caption, for use inside MDX posts. Tap or click it
-// to open the full-screen viewer.
+// to open the full-screen viewer. It casts a soft glow of its own colours on
+// the page around it (src/styles/media.css).
 //
 //   <Figure src={photo} alt="…" />               the reading column
 //   <Figure wide … />                            wider than the column
@@ -9,13 +10,26 @@
 //   <Figure bleed ratio="16/9" position="50% 80%" … />
 //                                                edge to edge on most screens, cropped
 //                                                to `ratio` from tablet width up
-//   motion="push"                                the photo draws you in slightly as you
-//                                                scroll past (supporting browsers, and
-//                                                never with reduced motion)
+//   shape="window"                               framed like an aeroplane window; the
+//                                                shade lifts when it comes into view
+//
+//   motion="…"  one scroll-linked movement, tied to what the photo shows
+//   (supporting browsers, and never with reduced motion; elsewhere the photo
+//   simply sits still):
+//     push   the photo draws you in slightly as you scroll past
+//     open   the view opens out from a narrow band to the full frame
+//     arc    revealed by an arc widening from the bottom edge
+//     mist   the photo comes out of a bank of cloud
+//     rise   the view tilts up the photo, from the bottom to the top
+//     pan    the view travels across the photo (crop it with `ratio`, and
+//            `mratio` for phones, so there's room to move)
+//     dusk   the photo brightens out of the dark
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import { zoomable, fit } from '../lib/zoom';
+import { tone } from '../lib/tone';
 import '../styles/lightbox.css';
+import '../styles/media.css';
 
 interface Props {
   src: ImageMetadata;
@@ -27,11 +41,27 @@ interface Props {
   bleed?: boolean;
   /** Crop for `bleed` (tablet and up) and `tall`, e.g. "16/9". */
   ratio?: string;
+  /** Crop on phones, for `motion="pan"`. */
+  mratio?: string;
   /** Which part of the photo to keep when it's cropped (CSS object-position). */
   position?: string;
-  motion?: 'push';
+  shape?: 'window';
+  motion?: 'push' | 'open' | 'arc' | 'mist' | 'rise' | 'pan' | 'dusk';
 }
-const { src, alt, caption, wide = false, inset = false, tall = false, bleed = false, ratio, position = '50% 50%', motion } = Astro.props;
+const {
+  src,
+  alt,
+  caption,
+  wide = false,
+  inset = false,
+  tall = false,
+  bleed = false,
+  ratio,
+  mratio,
+  position = '50% 50%',
+  shape,
+  motion,
+} = Astro.props;
 
 const [widths, sizes] = bleed
   ? [[640, 1024, 1600, 2400], 'min(100vw, 80rem)']
@@ -42,26 +72,34 @@ const [widths, sizes] = bleed
       : wide
         ? [[640, 1024, 1600], '(min-width: 1100px) 64rem, 100vw']
         : [[640, 1024, 1600], '(min-width: 700px) 40rem, 100vw'];
-const zoom = await zoomable(src);
+const [zoom, glow] = await Promise.all([zoomable(src), tone(src)]);
 ---
 
-<figure class:list={['fig', { wide, inset, tall, bleed }, motion]} style={`--ratio:${ratio ?? 'auto'};--pos:${position}`}>
-  <a class="zoom frame" href={zoom.href} data-zoom data-srcset={zoom.srcset} data-caption={caption ?? ''}>
-    <Image src={src} alt={alt} widths={fit(src, widths)} sizes={sizes} />
-  </a>
+<figure
+  class:list={['fig', { wide, inset, tall, bleed }, shape, motion && `m-${motion}`, { cue: shape === 'window' }]}
+  style={`--ratio:${ratio ?? 'auto'};--mratio:${mratio ?? ratio ?? 'auto'};--pos:${position};${glow}`}
+>
+  <div class="lit">
+    <span class="glow" aria-hidden="true"></span>
+    <a class="zoom frame" href={zoom.href} data-zoom data-srcset={zoom.srcset} data-caption={caption ?? ''}>
+      <Image src={src} alt={alt} widths={fit(src, widths)} sizes={sizes} />
+    </a>
+  </div>
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
 <style>
-  .fig.wide {
-    width: min(100vw - 2rem, 64rem);
-    margin-left: 50%;
-    transform: translateX(-50%);
+  .lit {
+    position: relative;
   }
   .fig :global(img) {
     width: 100%;
     max-height: none;
     border-radius: 10px;
+  }
+  .fig.wide {
+    width: min(100vw - 2rem, 64rem);
+    margin-left: calc(50% - min(50vw - 1rem, 32rem));
   }
 
   /* Small, beside the text (on phones, a narrow photo between paragraphs). */
@@ -85,9 +123,11 @@ const zoom = await zoomable(src);
   }
 
   /* As tall as the screen allows, never taller. */
-  .tall .frame {
+  .tall .lit {
     width: min(100%, 30rem);
     margin-inline: auto;
+  }
+  .tall .frame {
     aspect-ratio: var(--ratio);
     max-height: 88vh;
     overflow: hidden;
@@ -108,7 +148,8 @@ const zoom = await zoomable(src);
   .bleed .frame {
     overflow: hidden;
   }
-  .bleed :global(img) {
+  .bleed :global(img),
+  .bleed .glow {
     border-radius: 0;
   }
   @media (min-width: 760px) {
@@ -123,7 +164,8 @@ const zoom = await zoomable(src);
     }
   }
   @media (min-width: 80rem) {
-    .bleed .frame {
+    .bleed .frame,
+    .bleed .glow {
       border-radius: 14px;
     }
   }
@@ -132,18 +174,178 @@ const zoom = await zoomable(src);
     margin-inline: auto;
   }
 
-  /* Scroll-linked movement: CSS only, in browsers that support it. */
+  /* An aeroplane window: a rounded pane in a dark bezel, with a shade that
+     slides up once the photo comes into view (src/lib/cue.ts). */
+  .window {
+    padding: 0.6rem;
+  }
+  .window .frame,
+  .window .glow {
+    border-radius: 44% / 33%;
+  }
+  .window .frame {
+    overflow: hidden;
+    box-shadow:
+      0 0 0 0.55rem #162133,
+      0 0 0 calc(0.55rem + 1px) rgba(231, 237, 244, 0.16),
+      0 1.2rem 2.6rem rgba(0, 0, 0, 0.5);
+  }
+  .window :global(img) {
+    border-radius: 0;
+  }
+  .window .frame::after {
+    right: 50%;
+    bottom: 7%;
+    translate: 50% 0;
+  }
+  .window figcaption {
+    margin-top: var(--space-3);
+  }
+  :global(.js) .window .frame::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: 1;
+    background:
+      linear-gradient(to bottom, transparent calc(100% - 1.4rem), rgba(0, 0, 0, 0.18) calc(100% - 1.4rem)),
+      linear-gradient(to bottom, #d3d9e1, #b4bdc9);
+    translate: 0 0;
+    transition: translate 1.6s cubic-bezier(0.65, 0, 0.25, 1) 0.3s;
+    pointer-events: none;
+  }
+  :global(.js) .window.is-in .frame::before {
+    translate: 0 -101%;
+  }
+
+  /* ---------- Scroll-linked movement ----------
+     CSS only, in browsers that support it, and never with reduced motion.
+     Longhands on purpose: the minifier folds `animation` + timeline into one
+     shorthand that browsers reject. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      /* Longhands on purpose: the minifier folds `animation` + timeline
-         into one shorthand that browsers reject. */
-      .push :global(img) {
-        animation-name: fig-push;
+      .m-push :global(img),
+      .m-open .frame,
+      .m-open :global(img),
+      .m-arc .frame,
+      .m-mist .frame::before,
+      .m-mist :global(img),
+      .m-rise :global(img),
+      .m-pan :global(img),
+      .m-dusk .frame::before {
         animation-timing-function: linear;
         animation-fill-mode: both;
         animation-timeline: view();
+      }
+
+      .m-push :global(img) {
+        animation-name: fig-push;
         animation-range: entry 30% exit 10%;
       }
+
+      /* Photos that reveal themselves only start to glow once revealed, so
+         there's never a lit, empty frame. */
+      .m-open .glow,
+      .m-arc .glow,
+      .m-dusk .glow {
+        animation-name: glow-after;
+      }
+
+      /* The view opens: from a letterbox the width of the text to the whole
+         frame, the photo easing back as it does. */
+      .m-open .frame {
+        animation-name: fig-open;
+        animation-range: entry 0% cover 50%;
+      }
+      .m-open :global(img) {
+        animation-name: fig-open-img;
+        animation-range: entry 0% cover 50%;
+      }
+
+      /* An arc rising from the bottom edge, like the rainbow it shows. */
+      .m-arc .frame {
+        animation-name: fig-arc;
+        animation-range: entry 0% cover 50%;
+      }
+
+      /* A bank of cloud that thins away. */
+      .m-mist .frame {
+        overflow: hidden;
+        border-radius: 10px;
+      }
+      .m-mist .frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: 10px;
+        background:
+          radial-gradient(60% 45% at 30% 40%, rgba(244, 247, 251, 0.95), transparent 70%),
+          radial-gradient(70% 50% at 72% 62%, rgba(232, 239, 247, 0.95), transparent 72%),
+          linear-gradient(rgba(226, 234, 243, 0.92), rgba(206, 218, 231, 0.92));
+        pointer-events: none;
+        animation-name: fig-mist;
+        animation-range: entry 30% cover 55%;
+      }
+      .m-mist :global(img) {
+        animation-name: fig-mist-img;
+        animation-range: entry 30% cover 55%;
+      }
+
+      /* Looking up: a square crop that travels from the foot of the photo to
+         the top. */
+      .m-rise .frame {
+        aspect-ratio: 1;
+        overflow: hidden;
+        border-radius: 10px;
+      }
+      .m-rise :global(img) {
+        height: 100%;
+        object-fit: cover;
+        border-radius: 0;
+        animation-name: fig-rise;
+        animation-range: cover 10% cover 80%;
+      }
+
+      /* Travelling across the photo: up it on wide screens (the crop is
+         letterboxed), along it on phones (cropped to mratio). */
+      .m-pan :global(img) {
+        animation-name: fig-pan;
+        animation-range: cover 5% cover 85%;
+      }
+      @media (max-width: 759px) {
+        .m-pan.bleed .frame {
+          aspect-ratio: var(--mratio);
+        }
+        .m-pan.bleed :global(img) {
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+
+      /* The lights coming up. */
+      .m-dusk .frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        background: #03060c;
+        pointer-events: none;
+        animation-name: fig-dusk;
+        animation-range: entry 10% cover 48%;
+      }
+    }
+  }
+  @keyframes glow-after {
+    0%,
+    42% {
+      opacity: 0;
+    }
+    56%,
+    66% {
+      opacity: 0.55;
+    }
+    100% {
+      opacity: 0.1;
     }
   }
   @keyframes fig-push {
@@ -154,8 +356,75 @@ const zoom = await zoomable(src);
       scale: 1.16;
     }
   }
+  @keyframes fig-open {
+    from {
+      clip-path: inset(17% calc(50% - min(50% - 1rem, 19rem)) round 12px);
+    }
+    to {
+      clip-path: inset(0 0 round 0);
+    }
+  }
+  @keyframes fig-open-img {
+    from {
+      scale: 1.2;
+    }
+    to {
+      scale: 1;
+    }
+  }
+  @keyframes fig-arc {
+    from {
+      clip-path: circle(24% at 50% 100%);
+    }
+    to {
+      clip-path: circle(110% at 50% 100%);
+    }
+  }
+  @keyframes fig-mist {
+    from {
+      opacity: 1;
+      scale: 1;
+    }
+    to {
+      opacity: 0;
+      scale: 1.25;
+    }
+  }
+  @keyframes fig-mist-img {
+    from {
+      scale: 1.07;
+    }
+    to {
+      scale: 1;
+    }
+  }
+  @keyframes fig-rise {
+    from {
+      object-position: 50% 100%;
+    }
+    to {
+      object-position: 50% 0%;
+    }
+  }
+  @keyframes fig-pan {
+    from {
+      object-position: 0% 100%;
+    }
+    to {
+      object-position: 100% 0%;
+    }
+  }
+  @keyframes fig-dusk {
+    from {
+      opacity: 0.9;
+    }
+    to {
+      opacity: 0;
+    }
+  }
 </style>
 
 <script>
   import '../lib/lightbox';
+  import '../lib/cue';
 </script>

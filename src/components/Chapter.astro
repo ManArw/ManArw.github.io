@@ -1,0 +1,149 @@
+---
+// A chapter title for long, film-like posts. A heading written as
+// "Day 3 · Meeting Mount Fuji" becomes a small "Day 3" over a large "Meeting
+// Mount Fuji", with a big outlined 03 behind it; it arrives as you reach it.
+// Headings without " · " are left as they are. An MDX post opts in with
+//
+//   import Chapter from '../../components/Chapter.astro';
+//   export const components = { h2: Chapter };
+//
+// Screen readers, the contents list, search and the narration all still get
+// the heading exactly as written.
+const { id } = Astro.props as { id?: string };
+const html = (await Astro.slots.render('default')).trim();
+const parts = /^([\s\S]+?)\s+·\s+([\s\S]+)$/.exec(html);
+const number = parts?.[1].match(/\d+/)?.[0];
+---
+
+{
+  parts ? (
+    <h2 id={id} class="chapter cue">
+      {number && (
+        <span class="num" aria-hidden="true">
+          {number.padStart(2, '0')}
+        </span>
+      )}
+      <span class="kicker">
+        <Fragment set:html={parts[1]} />
+        <span class="visually-hidden"> · </span>
+      </span>
+      <span class="title" set:html={parts[2]} />
+    </h2>
+  ) : (
+    <h2 id={id} set:html={html} />
+  )
+}
+
+<style>
+  .chapter {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 0.5em;
+    margin-top: 3.2em;
+    margin-bottom: 0.6em;
+    padding-block: 0.4em;
+    text-align: center;
+  }
+  .num {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: -1;
+    translate: -50% -50%;
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 22vw, 11rem);
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(159, 194, 234, 0.22);
+    pointer-events: none;
+    user-select: none;
+  }
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: 0.9em;
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .kicker::before,
+  .kicker::after {
+    content: '';
+    width: clamp(1.5rem, 6vw, 3rem);
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+  .title {
+    max-width: 30rem;
+    font-size: var(--step-3);
+    font-weight: 300;
+    line-height: 1.08;
+    text-wrap: balance;
+  }
+
+  /* Arriving: the rules draw out from the day, the title rises into focus,
+     the numeral fades up behind (src/lib/cue.ts adds .is-in). */
+  :global(.js) .chapter .num,
+  :global(.js) .chapter .title,
+  :global(.js) .chapter .kicker::before,
+  :global(.js) .chapter .kicker::after {
+    transition:
+      opacity 1.1s var(--ease-out),
+      translate 1.1s var(--ease-out),
+      scale 1.4s var(--ease-out),
+      filter 1.1s var(--ease-out);
+  }
+  :global(.js) .chapter .title {
+    transition-delay: 0.12s;
+  }
+  :global(.js) .chapter:not(.is-in) .title {
+    opacity: 0;
+    translate: 0 0.4em;
+    filter: blur(6px);
+  }
+  :global(.js) .chapter:not(.is-in) .kicker::before,
+  :global(.js) .chapter:not(.is-in) .kicker::after {
+    scale: 0 1;
+  }
+  :global(.js) .chapter .kicker::before {
+    transform-origin: right;
+  }
+  :global(.js) .chapter .kicker::after {
+    transform-origin: left;
+  }
+  :global(.js) .chapter:not(.is-in) .num {
+    opacity: 0;
+    scale: 0.86;
+  }
+
+  /* The numeral drifts slower than the page as you scroll past. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .chapter .num {
+        animation-name: chapter-drift;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+      }
+    }
+  }
+  @keyframes chapter-drift {
+    from {
+      translate: -50% -20%;
+    }
+    to {
+      translate: -50% -80%;
+    }
+  }
+</style>
+
+<script>
+  import '../lib/cue';
+</script>

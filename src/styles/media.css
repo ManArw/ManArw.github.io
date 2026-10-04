@@ -1,0 +1,71 @@
+/* Shared by the photo and clip components (Figure, Spread, Strip, Video).
+   Imported by them, so it only ships on pages that have photos. */
+
+/* ---------- The glow ----------
+   Every picture casts a soft light of its own colours on the night-blue
+   page, like a screen in a dark room: four lights, one from each quarter of
+   the picture (colours from src/lib/tone.ts, or live from a playing clip).
+   It brightens as the picture reaches the middle of the screen. It sits
+   behind the text, so it never dims a word. */
+@property --g1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --g2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --g3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+@property --g4 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 10px;
+  pointer-events: none;
+  box-shadow:
+    -1.6rem -1.2rem 4.5rem -0.6rem var(--g1),
+    1.6rem -1.2rem 4.5rem -0.6rem var(--g2),
+    -1.6rem 1.2rem 4.5rem -0.6rem var(--g3),
+    1.6rem 1.2rem 4.5rem -0.6rem var(--g4);
+  opacity: 0.4;
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* Longhands on purpose: the minifier folds `animation` + timeline into
+       one shorthand that browsers reject. */
+    .glow {
+      animation-name: glow-breathe;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  38%,
+  62% {
+    opacity: 0.55;
+  }
+}
+
+/* While a lazy photo loads, its frame shows a gradient of its own colours. */
+a.zoom img {
+  background-image: var(--ph, none);
+}
