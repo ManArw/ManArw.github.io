@@ -11,16 +11,34 @@ audio: true
 
 import Figure from '../../components/Figure.astro';
 import Video from '../../components/Video.astro';
+import Spread from '../../components/Spread.astro';
+import Strip from '../../components/Strip.astro';
 import fujiClouds from '../../assets/fuji.jpg';
 import fujiDusk from '../../assets/japan/fuji-dusk.jpg';
 import fujiTrain from '../../assets/japan/fuji-shinkansen.jpg';
 import cairn from '../../assets/japan/cairn.jpg';
+import wingDawn from '../../assets/japan/wing-dawn.jpg';
+import fourOnABench from '../../assets/japan/four-on-a-bench.jpg';
+import moatTurret from '../../assets/japan/moat-turret.jpg';
+import kawaguchikoMorning from '../../assets/japan/kawaguchiko-morning.jpg';
+import fujiTorii from '../../assets/japan/fuji-torii.jpg';
+import stackedStones from '../../assets/japan/stacked-stones.jpg';
+import inariGates from '../../assets/japan/inari-gates.jpg';
+import inariLake from '../../assets/japan/inari-lake.jpg';
+import inariSelfie from '../../assets/japan/inari-selfie.jpg';
+import kiyomizuDragon from '../../assets/japan/kiyomizu-dragon.jpg';
+import kiyomizuHall from '../../assets/japan/kiyomizu-hall.jpg';
+import kiyomizuLanterns from '../../assets/japan/kiyomizu-lanterns.jpg';
+import kyotoFour from '../../assets/japan/kyoto-four.jpg';
+import odaibaNight from '../../assets/japan/odaiba-night.jpg';
 
 > These ten days in Japan gave me more memories than I could have imagined. This is my attempt to capture them, just the way I felt them, honest and warm, exactly as they happened.
 
 ## Day 1 · Touchdown in Tokyo
 
 *Waking up above the clouds felt like stepping into a dream.*
+
+<Figure inset src={wingDawn} alt="An aeroplane wing against a violet dawn sky, with clouds catching the first light far below." caption="Above the clouds, the first morning." />
 
 I woke up to a sunrise floating above the clouds, unsure when I had even fallen asleep. The sky outside my window glowed a soft violet, maybe the tint on the glass, maybe just the magic of flying into a new country. Either way, it felt unreal.
 
@@ -45,6 +63,8 @@ Watching him reunite with our parents was even better, a long, tight embrace tha
 ### First Steps in Tokyo
 
 A little later, Appa, Simba, and I picked up our Welcome Suica cards. From the airport, we took a bus to Tokyo Station, then hopped into a premium taxi straight to Satwi’s apartment.
+
+<Video bleed ratio="21/9" mratio="16/9" src="/media/japan/bus-window.mp4" small="/media/japan/bus-window-sm.mp4" poster="/media/japan/bus-window.webp" label="Evening traffic on an elevated highway, seen from a moving bus window under a pale dusk sky, the city low on the horizon." caption="Out of the bus window, on the way into Tokyo." />
 
 Once we reached, we relaxed, made tea, sat together, and talked for what felt like hours. Eventually, we walked down the road to check our parents into their hotel.
 
@@ -89,6 +109,8 @@ Perfectly disciplined traffic.
 Tokyo felt unreal, like a city designed with intention and kindness.
 
 We took plenty of photos and walked along the moat before entering the Imperial Palace East Gardens. The landscape felt like a blend of history and serenity. Every corner carried a story, every path felt preserved with care. We spent a few hours wandering, snacking on the treats we’d brought from India, before deciding our next destination: Tokyo Skytree.
+
+<Spread a={{ src: fourOnABench, alt: 'The four of us on a bench beneath a big tree turning yellow, with glass office towers rising behind.' }} b={{ src: moatTurret, alt: 'A white Japanese turret with a tiled roof on a dark stone wall above the moat, a modern tower block behind it.' }} caption="All four of us, and the old walls along the moat." />
 
 ### A Meal Beneath the Skytree
 
@@ -148,6 +170,8 @@ It didn’t feel real, but it was.
 
 We reached Kawaguchiko Station soon after. The cold wind hit instantly, 12°C, sharp and unforgiving. That alone should’ve told us we weren’t dressed warm enough.
 
+<Figure src={kawaguchikoMorning} alt="A Lawson convenience store on a street corner, the summit of Mount Fuji almost hidden by a bank of cloud behind it." caption="Kawaguchiko that morning, the mountain wrapped in cloud." />
+
 We found a spot to sit, opened our bread and strawberry jam, and ate quietly while our hands froze. Everyone needed coffee, desperately. We located the nearest 7/11, grabbed two hot coffees and some sandwiches, and warmed up just enough to keep going.
 
 ### The Ropeway & A Rainbow by the Lake
@@ -170,6 +194,8 @@ We joined Amma and Appa for lunch as it began to drizzle again. Hot tea became o
 
 We hopped onto a tourist bus that took us across the village to a lakeside garden. And this, this was the view we had come for.
 
+<Figure bleed ratio="3/2" position="50% 100%" src={fujiTorii} alt="Mount Fuji, clear and snow-capped across a lake, framed by a small red torii under a wide blue sky, red autumn leaves at its foot." caption="Through a small torii, across the lake." />
+
 Fuji stood clear, flawless, framed by the lake and gardens.
 
 No clouds.
@@ -178,7 +204,7 @@ No haze.
 
 Just the mountain in all its glory.
 
-<Video src="/media/fuji-first-glimpse.mp4" poster="/media/fuji-first-glimpse-poster.jpg" label="A slow pan across Mount Fuji over Lake Kawaguchiko, with pampas grass in the foreground." caption="Lake Kawaguchiko, 3 November. No clouds, no haze." />
+<Video src="/media/japan/fuji-first-glimpse.mp4" small="/media/japan/fuji-first-glimpse-sm.mp4" poster="/media/japan/fuji-first-glimpse.webp" label="A slow pan across Mount Fuji over Lake Kawaguchiko, with pampas grass in the foreground." caption="Lake Kawaguchiko, 3 November. No clouds, no haze." />
 
 We took some incredible photos and soaked in the scenery. The cold, however, was getting harsher as sunset approached. We found a small shop selling hot, sweet potatoes and stood huddled together, letting the warmth slowly return to our fingers.
 
@@ -272,11 +298,13 @@ Our hotel was about four hundred meters from Kyoto Station. We walked there, ask
 
 We took the metro to the Arashiyama Bamboo Forest. The city looked beautiful, slow and peaceful. From the station, we decided to walk the one kilometer to the forest. On the way, we passed what looked like a small worship space, there were many stones stacked on each other by visitors. Maybe it was a ritual. I made a small stack myself and said a quiet prayer for my family.
 
-<Figure src={cairn} alt="A small stack of four stones balanced on a rock, with other stacked stones blurred behind." caption="My small stack, on the way to Arashiyama." />
+<Spread flip a={{ src: stackedStones, alt: 'Small stacks of stones balanced on rocks, on a stone turtle and on carved stone posts, in a small worship space.' }} b={{ src: cairn, alt: 'A small stack of four stones balanced on a rock, with other stacked stones blurred behind.' }} caption="Stones stacked by other visitors, and my small stack, on the way to Arashiyama." />
 
 We soon entered the bamboo forest. Many foreign tourists would call it crowded, but for us Indians, it felt normal, just another weekend in a busy market. Living in the most populated country does that to you, nothing feels crowded anymore.
 
 The forest was beautiful and quite large. There were several temples along the way. We bought tickets to a national heritage site and the moment we walked in, we knew it was worth it. The place was mesmerizing. The gardens, the architecture, the calm, everything felt like stepping into a painting.
+
+<Video bleed ratio="21/9" mratio="16/9" src="/media/japan/arashiyama-garden.mp4" small="/media/japan/arashiyama-garden-sm.mp4" poster="/media/japan/arashiyama-garden.webp" label="A slow pan across a still garden pond ringed by pines and autumn maples, ending on a long wooden hall with a grey tiled roof." caption="Inside the heritage site, 5 November." />
 
 We were there for almost two hours. Me and Simba decided to explore a different section of the garden, which required some climbing. Amma and Appa stayed back. The plan was to meet at the exit. We did not know there were two exits.
 
@@ -316,9 +344,13 @@ We woke up pretty late, the exhaustion from yesterday’s long adventure still l
 
 After breakfast, we headed to Fushimi Inari. The moment we reached, the place felt alive with history. The bright orange torii gates stretched endlessly, creating tunnels of color and quiet.
 
+<Figure tall ratio="3/4" motion="push" src={inariGates} alt="A tunnel of bright orange torii gates with black bases and black inscriptions, receding up a stone path as visitors walk beneath them." caption="Under the gates at Fushimi Inari." />
+
 We followed one of the Japanese traditions, praying and lifting a stone to test strength and intention. It was small, but meaningful. We took plenty of pictures, capturing the gates, the paths, and the serene atmosphere.
 
 The hike to the peak had almost ten thousand steps. Amma and Appa decided to stay back. Me and Simba wanted to climb at least halfway, but we knew it would drain our energy completely. Instead, we explored a calm area nearby, with a small lake and a peaceful prayer spot. It felt like a hidden corner of Kyoto, almost untouched.
+
+<Spread a={{ src: inariLake, alt: 'A small wooden building with an orange fence on a stone bank above a still green pond, deep in the trees.' }} b={{ src: inariSelfie, alt: 'Simba and me smiling in a selfie by the pond, trees and water behind us.' }} caption="A small lake, a prayer spot, and the two of us." />
 
 We bought a few souvenirs and walked back to meet Amma and Appa.
 
@@ -350,9 +382,13 @@ We started our day by heading to Kiyomizudera. The walk leading up to the temple
 
 As we climbed further, we passed what looked like a small castle structure and a few pagodas rising above the trees. Kiyomizudera itself was peaceful, grand and full of character. We spent some time exploring, taking in the views, and enjoying the atmosphere.
 
+<Strip label="Three photographs from the morning at Kiyomizudera" frames={[{ src: kiyomizuDragon, alt: 'A dark bronze dragon statue in front of an orange temple building, the low sun flaring between its pillars.', label: '8:20 am' }, { src: kiyomizuHall, alt: 'The great wooden hall of Kiyomizudera and its terrace above autumn trees, the city and hills far below, a crowd in the foreground.', label: '8:54 am' }, { src: kiyomizuLanterns, alt: 'Two stone lanterns in a quiet clearing among thin trees, fallen leaves on the ground.', label: '9:09 am' }]} caption="Kiyomizudera, the morning of 7 November." />
+
 ### Souvenirs and a Quick Return
 
 After roaming around for a while, we checked the time. We had a train to catch. On the way down, we bought a few souvenirs for everyone back home, small reminders of Kyoto and its quiet beauty.
+
+<Figure src={kyotoFour} alt="The four of us sitting on the curved stone steps of a fountain, smiling and making peace signs, a huge two-storey temple gate behind us." caption="All four of us, on the last morning in Kyoto." />
 
 Soon after, we made our way to the station and boarded the Shinkansen back to Tokyo. We took seats D and E again, hoping to see Mount Fuji one more time during the journey.
 
@@ -379,6 +415,8 @@ We then went into Uniqlo, where I bought a nice jacket for myself, something sim
 From Ginza, we headed toward the place where the Tokyo city cruise started. The weather was calm, the water reflected the skyline, and the entire experience felt peaceful. I took a time lapse of the cruise, watching the buildings shift and glide past like scenes from a movie.
 
 Later, we reached Odaiba and spent time at the beach side viewpoint. The sunset painted the sky in warm colors but the wind was brutal, cold air sweeping across the water and hitting our faces. Even then, the place felt beautiful, a quiet farewell from Tokyo.
+
+<Figure bleed ratio="16/10" src={odaibaNight} alt="The four of us standing together at a waterfront railing at night, a suspension bridge lit blue and the lights of the city across the water behind us." caption="Odaiba after dark, on the last full day." />
 
 ### The Final Walk Home
 
@@ -423,3 +461,5 @@ Some trips change you in small ways, quietly, without announcing themselves. Thi
 We came home with heavier suitcases and fuller hearts, and as the plane lifted off, it felt like Japan was gently saying, come back when you can, I will be waiting.
 
 > In the end, it wasn’t Japan that made the trip special, it was the people I saw it with.
+
+<Strip small label="The four of us on Day 2, Day 7 and Day 8" frames={[{ src: fourOnABench, alt: 'The four of us on a bench in Tokyo.', label: 'Day 2' }, { src: kyotoFour, alt: 'The four of us in Kyoto.', label: 'Day 7' }, { src: odaibaNight, alt: 'The four of us at Odaiba at night.', label: 'Day 8' }]} caption="Four hearts, one Japan." />

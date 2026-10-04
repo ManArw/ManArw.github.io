@@ -24,7 +24,7 @@ npm run narrate    # generate narration for new/changed pieces (see docs/AUDIO.m
 | Synced essays and notes (don't edit by hand) | `src/data/substack-snapshot.json`, `src/data/notes-snapshot.json` |
 | The content model every page reads from | `src/lib/content.ts` |
 | Hero photo | `src/assets/fuji.jpg` (replace with a higher-res copy any time, same name) |
-| Japan photos | `src/assets/japan/` · video in `public/media/` |
+| Japan photos | `src/assets/japan/` · clips in `public/media/japan/` (both made from the phone originals by `scripts/prepare-japan-media.mjs`) |
 | Reaction labels and emoji | `src/data/reactions.ts` |
 | Which pieces are narrated, and the voice | `src/data/narration.mjs` (see [docs/AUDIO.md](docs/AUDIO.md)) |
 | Narration audio | `public/audio/` (generated, don't edit) |
@@ -80,7 +80,21 @@ The file name becomes the URL (`/blog/my-post`). `draft: true` hides it from the
 ever rename the file, add `id: my-post` (the old name) to the front matter so its reactions stay
 attached.
 
-For photos and video, use `.mdx` and the `Figure` / `Video` components (see `japan-ten-days.mdx`).
+For photos and video, use `.mdx` and the components in `src/components/` (`japan-ten-days.mdx` uses
+all of them):
+
+- `Figure`: one photo. In the column by default, or `wide`, `inset` (small, beside the text), `tall`
+  (a portrait, never taller than the screen) or `bleed` (edge to edge, cropped to `ratio`).
+- `Spread`: two photos laid like prints, a small one over the corner of a larger one.
+- `Strip`: a row of photos with small labels (times, days); on phones it swipes sideways.
+- `Video`: a short silent loop that only downloads and plays while on screen. `small` is a lighter
+  file for phones.
+
+Every photo opens in a full-screen viewer (arrow keys, swipe, Esc). Keep each component on one line
+and self-closing (`<Figure … />`): the narration and search skip components that way, so adding
+photos never changes a narrated post's audio. Put photos in `src/assets/` (Astro makes the
+responsive sizes); strip GPS from phone originals first, as the Japan media script does.
+
 `cover:` adds a header photo; `featured: true` puts the post at the top of the Blog page.
 
 ## Listen to this piece (narration)

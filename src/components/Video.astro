@@ -1,19 +1,31 @@
 ---
 // A short, muted, looping clip. It only downloads and plays while on screen,
-// and it doesn't autoplay at all for visitors who prefer reduced motion.
+// and it doesn't autoplay at all for visitors who prefer reduced motion or
+// have asked their browser to save data (they get a play button).
+//
+//   small     a lighter file for phones (screens up to 700px wide)
+//   ratio     the frame's shape, e.g. "21/9" (default square)
+//   mratio    its shape on phones, if different
+//   bleed     edge to edge on most screens, like a full-width photo
 interface Props {
   src: string;
   poster: string;
   caption?: string;
   label: string;
+  small?: string;
+  ratio?: string;
+  mratio?: string;
+  bleed?: boolean;
+  position?: string;
 }
-const { src, poster, caption, label } = Astro.props;
+const { src, poster, caption, label, small, ratio = '1', mratio, bleed = false, position = '50% 50%' } = Astro.props;
 ---
 
-<figure class="clip">
+<figure class:list={['clip', { bleed }]} style={`--ratio:${ratio};--mratio:${mratio ?? ratio};--pos:${position}`}>
   <div class="frame">
     <video muted loop playsinline preload="none" poster={poster} aria-label={label} data-clip>
-      <source src={src} type="video/mp4" />
+      {small && <source src={src} type="video/mp4" media="(min-width: 701px)" />}
+      <source src={small ?? src} type="video/mp4" />
     </video>
     <button type="button" class="toggle" aria-label="Pause video" data-clip-toggle>
       <svg class="pause" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1"></rect><rect x="13.5" y="5" width="4" height="14" rx="1"></rect></svg>
@@ -30,10 +42,32 @@ const { src, poster, caption, label } = Astro.props;
   video {
     display: block;
     width: 100%;
-    aspect-ratio: 1;
+    aspect-ratio: var(--ratio);
     object-fit: cover;
+    object-position: var(--pos);
     border-radius: 10px;
     background: var(--line);
+  }
+  @media (max-width: 700px) {
+    video {
+      aspect-ratio: var(--mratio);
+    }
+  }
+  .bleed {
+    width: min(100vw, 80rem);
+    margin: 3em 0 3em calc(50% - min(50vw, 40rem));
+  }
+  .bleed video {
+    border-radius: 0;
+  }
+  @media (min-width: 80rem) {
+    .bleed video {
+      border-radius: 14px;
+    }
+  }
+  .bleed figcaption {
+    width: min(100% - 2rem, var(--measure));
+    margin-inline: auto;
   }
   .toggle {
     position: absolute;
@@ -64,9 +98,10 @@ const { src, poster, caption, label } = Astro.props;
 
 <script>
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
   document.querySelectorAll<HTMLVideoElement>('[data-clip]').forEach((video) => {
     const btn = video.parentElement!.querySelector<HTMLButtonElement>('[data-clip-toggle]')!;
-    let userPaused = reduce;
+    let userPaused = reduce || saveData;
     const sync = () => {
       btn.classList.toggle('paused', video.paused);
       btn.setAttribute('aria-label', video.paused ? 'Play video' : 'Pause video');

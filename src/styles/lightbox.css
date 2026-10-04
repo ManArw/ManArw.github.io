@@ -1,0 +1,167 @@
+/* The full-screen photo viewer (src/lib/lightbox.ts). Imported by the photo
+   components, so it only ships on pages that have photos. */
+
+.lb-lock {
+  overflow: hidden;
+}
+
+.lb {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(6, 11, 20, 0.97);
+  color: var(--ink);
+  display: none;
+  grid-template-rows: auto 1fr auto;
+  opacity: 0;
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    display var(--dur-2) allow-discrete,
+    overlay var(--dur-2) allow-discrete;
+}
+.lb[open] {
+  display: grid;
+  opacity: 1;
+}
+@starting-style {
+  .lb[open] {
+    opacity: 0;
+  }
+}
+.lb::backdrop {
+  background: transparent;
+}
+
+.lb-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: max(var(--space-2), env(safe-area-inset-top)) var(--space-3) 0;
+}
+.lb-count {
+  font-family: var(--font-display);
+  font-size: var(--step--1);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.lb-stage {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-2) var(--space-3);
+  touch-action: pan-y;
+}
+.lb-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.lb-btn {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(16, 27, 44, 0.75);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color var(--dur-1);
+}
+.lb-btn:hover {
+  background: rgba(36, 52, 75, 0.95);
+}
+.lb-btn svg {
+  width: 22px;
+  height: 22px;
+}
+.lb-prev,
+.lb-next {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+.lb-prev {
+  left: var(--space-3);
+}
+.lb-next {
+  right: var(--space-3);
+}
+
+.lb-cap {
+  min-height: 1.5em;
+  width: min(100% - 2rem, var(--measure));
+  margin: 0 auto;
+  padding: var(--space-2) 0 max(var(--space-4), env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: var(--step--1);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+/* On phones the photo uses the whole width; swiping moves between photos,
+   and the buttons sit low, where a thumb reaches them. */
+@media (max-width: 640px) {
+  .lb-stage {
+    padding-inline: 0;
+  }
+  .lb-img {
+    border-radius: 0;
+  }
+  .lb-prev,
+  .lb-next {
+    top: auto;
+    bottom: var(--space-2);
+    translate: none;
+  }
+}
+
+/* Every photo that opens the viewer. */
+a.zoom {
+  display: block;
+  position: relative;
+  cursor: zoom-in;
+  color: inherit;
+}
+/* A quiet block of colour while a lazy-loaded photo arrives. */
+a.zoom img {
+  background-color: var(--surface-solid);
+}
+a.zoom::after {
+  content: '';
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(10, 18, 32, 0.6)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e7edf4' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M10 20H4v-6M20 4l-6 6M4 20l6-6'/%3E%3C/svg%3E")
+    center / 16px no-repeat;
+  opacity: 0;
+  transition: opacity var(--dur-1);
+  pointer-events: none;
+}
+a.zoom:hover::after,
+a.zoom:focus-visible::after {
+  opacity: 1;
+}
+@media (hover: none) {
+  a.zoom::after {
+    display: none;
+  }
+}

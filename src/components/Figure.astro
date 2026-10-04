@@ -1,19 +1,54 @@
 ---
-// Optimised photo with a caption, for use inside MDX posts.
+// Optimised photo with a caption, for use inside MDX posts. Tap or click it
+// to open the full-screen viewer.
+//
+//   <Figure src={photo} alt="…" />               the reading column
+//   <Figure wide … />                            wider than the column
+//   <Figure inset … />                           small, beside the text
+//   <Figure tall … />                            a portrait, as tall as the screen allows
+//   <Figure bleed ratio="16/9" position="50% 80%" … />
+//                                                edge to edge on most screens, cropped
+//                                                to `ratio` from tablet width up
+//   motion="push"                                the photo draws you in slightly as you
+//                                                scroll past (supporting browsers, and
+//                                                never with reduced motion)
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
+import { zoomable, fit } from '../lib/zoom';
+import '../styles/lightbox.css';
 
 interface Props {
   src: ImageMetadata;
   alt: string;
   caption?: string;
   wide?: boolean;
+  inset?: boolean;
+  tall?: boolean;
+  bleed?: boolean;
+  /** Crop for `bleed` (tablet and up) and `tall`, e.g. "16/9". */
+  ratio?: string;
+  /** Which part of the photo to keep when it's cropped (CSS object-position). */
+  position?: string;
+  motion?: 'push';
 }
-const { src, alt, caption, wide = false } = Astro.props;
+const { src, alt, caption, wide = false, inset = false, tall = false, bleed = false, ratio, position = '50% 50%', motion } = Astro.props;
+
+const [widths, sizes] = bleed
+  ? [[640, 1024, 1600, 2400], 'min(100vw, 80rem)']
+  : inset
+    ? [[360, 540, 720], '(min-width: 760px) 15rem, 72vw']
+    : tall
+      ? [[480, 800, 1200], '(min-width: 700px) 30rem, 100vw']
+      : wide
+        ? [[640, 1024, 1600], '(min-width: 1100px) 64rem, 100vw']
+        : [[640, 1024, 1600], '(min-width: 700px) 40rem, 100vw'];
+const zoom = await zoomable(src);
 ---
 
-<figure class:list={['fig', { wide }]}>
-  <Image src={src} alt={alt} widths={[640, 1024, 1600]} sizes={wide ? '(min-width: 1100px) 64rem, 100vw' : '(min-width: 700px) 40rem, 100vw'} />
+<figure class:list={['fig', { wide, inset, tall, bleed }, motion]} style={`--ratio:${ratio ?? 'auto'};--pos:${position}`}>
+  <a class="zoom frame" href={zoom.href} data-zoom data-srcset={zoom.srcset} data-caption={caption ?? ''}>
+    <Image src={src} alt={alt} widths={fit(src, widths)} sizes={sizes} />
+  </a>
   {caption && <figcaption>{caption}</figcaption>}
 </figure>
 
@@ -28,4 +63,99 @@ const { src, alt, caption, wide = false } = Astro.props;
     max-height: none;
     border-radius: 10px;
   }
+
+  /* Small, beside the text (on phones, a narrow photo between paragraphs). */
+  .inset {
+    width: min(15rem, 42%);
+    float: right;
+    margin: 0.4em 0 1.2em var(--space-4);
+  }
+  .inset figcaption {
+    text-align: left;
+  }
+  :global(.prose) :global(:is(h2, h3, h4)) {
+    clear: both;
+  }
+  @media (max-width: 759px) {
+    .inset {
+      float: none;
+      width: min(16rem, 72%);
+      margin: 2em auto;
+    }
+  }
+
+  /* As tall as the screen allows, never taller. */
+  .tall .frame {
+    width: min(100%, 30rem);
+    margin-inline: auto;
+    aspect-ratio: var(--ratio);
+    max-height: 88vh;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .tall :global(img) {
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--pos);
+    border-radius: 0;
+  }
+
+  /* Edge to edge up to 80rem; cropped to a cinematic frame on wider screens. */
+  .bleed {
+    width: min(100vw, 80rem);
+    margin: 3em 0 3em calc(50% - min(50vw, 40rem));
+  }
+  .bleed .frame {
+    overflow: hidden;
+  }
+  .bleed :global(img) {
+    border-radius: 0;
+  }
+  @media (min-width: 760px) {
+    .bleed .frame {
+      aspect-ratio: var(--ratio);
+      max-height: 88vh;
+    }
+    .bleed :global(img) {
+      height: 100%;
+      object-fit: cover;
+      object-position: var(--pos);
+    }
+  }
+  @media (min-width: 80rem) {
+    .bleed .frame {
+      border-radius: 14px;
+    }
+  }
+  .bleed figcaption {
+    width: min(100% - 2rem, var(--measure));
+    margin-inline: auto;
+  }
+
+  /* Scroll-linked movement: CSS only, in browsers that support it. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      /* Longhands on purpose: the minifier folds `animation` + timeline
+         into one shorthand that browsers reject. */
+      .push :global(img) {
+        animation-name: fig-push;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry 30% exit 10%;
+      }
+    }
+  }
+  @keyframes fig-push {
+    from {
+      scale: 1;
+    }
+    to {
+      scale: 1.16;
+    }
+  }
 </style>
+
+<script>
+  import '../lib/lightbox';
+</script>

@@ -1,0 +1,145 @@
+---
+// A run of photos read left to right, like frames on a contact sheet, each
+// with an optional small label (a time, a day). On wide screens the frames
+// share one row at the same height; on phones the row scrolls sideways and
+// snaps frame by frame, with the next one peeking in. `small` makes a short
+// row of little prints that fits the reading column on every screen.
+//
+//   <Strip frames={[{ src, alt, label: '8:20' }, …]} caption="…" />
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { zoomable, fit } from '../lib/zoom';
+import '../styles/lightbox.css';
+
+type Frame = { src: ImageMetadata; alt: string; label?: string };
+interface Props {
+  frames: Frame[];
+  caption?: string;
+  /** Names the row for screen readers. */
+  label?: string;
+  small?: boolean;
+}
+const { frames, caption, label, small = false } = Astro.props;
+const zooms = await Promise.all(frames.map((f) => zoomable(f.src)));
+const total = frames.reduce((n, f) => n + f.src.width / f.src.height, 0);
+---
+
+<figure class:list={['strip', { small }]}>
+  <div class="row" role="group" aria-label={label}>
+    {
+      frames.map((f, i) => {
+        const ar = f.src.width / f.src.height;
+        return (
+          <div class="frame reveal" style={`--ar:${ar.toFixed(4)};--delay:${i * 110}ms`}>
+            <a class="zoom" href={zooms[i].href} data-zoom data-srcset={zooms[i].srcset} data-caption={[f.label, caption].filter(Boolean).join(' · ')}>
+              <Image
+                src={f.src}
+                alt={f.alt}
+                widths={fit(f.src, small ? [240, 400, 600] : [400, 700, 1100])}
+                sizes={small ? '(min-width: 700px) 12rem, 30vw' : `(min-width: 760px) ${((64 * ar) / total).toFixed(1)}rem, ${Math.round(ar * 60)}vw`}
+              />
+            </a>
+            {f.label && <span class="label">{f.label}</span>}
+          </div>
+        );
+      })
+    }
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .strip {
+    width: min(100vw - 2rem, 64rem);
+    margin: 3em 0 3em calc(50% - min(50vw - 1rem, 32rem));
+  }
+  .row {
+    display: flex;
+    gap: 0.75rem;
+  }
+  .frame {
+    flex: var(--ar) 1 0;
+    min-width: 0;
+  }
+  .frame :global(img) {
+    width: 100%;
+    max-height: none;
+    aspect-ratio: var(--ar);
+    object-fit: cover;
+    border-radius: 6px;
+  }
+  .label {
+    display: block;
+    margin-top: var(--space-2);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  figcaption {
+    width: min(100%, var(--measure));
+    margin-inline: auto;
+    margin-top: var(--space-3);
+  }
+
+  /* Phones: one frame at a time, swiped sideways, edge to edge. */
+  @media (max-width: 759px) {
+    .strip:not(.small) {
+      width: 100vw;
+      margin-inline: calc(50% - 50vw);
+    }
+    .strip:not(.small) .row {
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: 1rem;
+      padding-inline: 1rem;
+      padding-bottom: var(--space-2);
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+    .strip:not(.small) .frame {
+      flex: none;
+      width: calc(min(60vw, 26rem) * var(--ar));
+      scroll-snap-align: start;
+    }
+    .strip:not(.small) figcaption {
+      width: calc(100% - 2rem);
+    }
+  }
+
+  /* Little prints, in the reading column. */
+  .small {
+    width: 100%;
+    margin-inline: 0;
+  }
+  .small .row {
+    justify-content: center;
+    gap: clamp(0.5rem, 2vw, 1rem);
+  }
+  .small .frame {
+    flex: 0 1 12rem;
+  }
+  .small .frame:nth-child(odd) {
+    rotate: -1.2deg;
+  }
+  .small .frame:nth-child(even) {
+    rotate: 1deg;
+    translate: 0 0.4rem;
+  }
+  .small .frame :global(img) {
+    border-radius: 3px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  }
+  .small .label {
+    text-align: center;
+  }
+  .small figcaption {
+    margin-top: var(--space-4);
+  }
+</style>
+
+<script>
+  import '../lib/lightbox';
+</script>
