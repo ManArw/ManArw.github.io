@@ -202,19 +202,23 @@ const glow = cover ? await tone(cover) : '';
 </style>
 
 <script>
-  import { fanfare, prime } from '../lib/fanfare';
+  import { advancement, prime } from '../lib/fanfare';
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Ten days, done: leaving a reaction at the end (adding one, not taking it back) plays the
-  // advancement sound. The tap is what allows the sound, so it never plays by itself.
+  // advancement sound and toast, once per visit. The tap is what allows the sound, so it never
+  // plays by itself.
   const reactions = document.querySelector<HTMLElement>('[data-reactions]');
   reactions?.addEventListener('pointerover', prime, { once: true });
+  let done = false;
   reactions?.addEventListener(
     'click',
     (e) => {
       const b = (e.target as Element).closest('[data-reaction]');
-      if (b?.getAttribute('aria-pressed') === 'false' && b.getAttribute('aria-busy') !== 'true') fanfare();
+      if (done || b?.getAttribute('aria-pressed') !== 'false' || b.getAttribute('aria-busy') === 'true') return;
+      done = true;
+      advancement('Ten Days in Japan', 'fuji');
     },
     { capture: true },
   );

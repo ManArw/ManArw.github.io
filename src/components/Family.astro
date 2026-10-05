@@ -446,11 +446,12 @@ let pupIndex = 0;
 </style>
 
 <script>
-  import { fanfare, prime } from '../lib/fanfare';
+  import { advancement, prime } from '../lib/fanfare';
 
   const live = document.querySelector<HTMLElement>('[data-pet-live]');
   const pets = document.querySelectorAll<HTMLButtonElement>('[data-pet]');
-  // Saying hello to every one of them is an advancement, with the sound to match.
+  // Saying hello to every one of them is an advancement, with the sound and the toast. Each
+  // full round of hellos earns it again.
   const met = new Set<string>();
   pets.forEach((pet) => {
     pet.addEventListener('click', () => {
@@ -459,8 +460,8 @@ let pupIndex = 0;
       prime();
       window.dispatchEvent(new CustomEvent('pet:hello', { detail: { name, kind: pet.dataset.kind } }));
       if (met.size === pets.length) {
-        fanfare();
-        setTimeout(() => live && (live.textContent = 'Advancement made: met the whole household.'), 1500);
+        met.clear();
+        advancement('The Whole Household', 'paw');
       }
     });
   });

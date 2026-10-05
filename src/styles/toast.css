@@ -1,0 +1,77 @@
+/* The advancement toast (src/lib/fanfare.ts), drawn on the game's 160×32 pixel grid:
+   --px is one game pixel. The tray clips the slide so it never widens the page. */
+.mc-tray {
+  position: fixed;
+  top: max(0.5rem, env(safe-area-inset-top));
+  right: 0;
+  z-index: calc(var(--z-nav, 40) + 10);
+  padding: 0.25rem max(0.75rem, env(safe-area-inset-right)) 0.25rem 0.25rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mc-toast {
+  --px: 2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--px) * 6);
+  width: calc(var(--px) * 160);
+  max-width: calc(100vw - 1.5rem);
+  height: calc(var(--px) * 32);
+  padding: 0 calc(var(--px) * 7);
+  box-sizing: border-box;
+  background: #212121;
+  border: var(--px) solid #555;
+  box-shadow: 0 0 0 var(--px) #0d0d0d;
+  border-radius: calc(var(--px) * 1.5);
+  font-family: 'Pixelify Sans', ui-monospace, monospace;
+  font-size: calc(var(--px) * 9);
+  line-height: 1.15;
+  transform: translateX(calc(100% + 2rem));
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.6, 1);
+}
+.mc-toast.in {
+  transform: none;
+  transition-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.mc-toast svg {
+  flex: none;
+  width: calc(var(--px) * 16);
+  height: calc(var(--px) * 16);
+}
+.mc-toast p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--px) * 2);
+  min-width: 0;
+}
+.mc-kind,
+.mc-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mc-kind {
+  color: #ff55ff;
+  text-shadow: var(--px) var(--px) 0 #3f153f;
+}
+.mc-title {
+  color: #fff;
+  text-shadow: var(--px) var(--px) 0 #3f3f3f;
+}
+@media (min-width: 760px) {
+  .mc-toast {
+    --px: 2.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-toast {
+    transform: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .mc-toast.in {
+    opacity: 1;
+  }
+}
