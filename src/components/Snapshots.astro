@@ -1,0 +1,400 @@
+---
+// The real household, as a little pile of instant prints straight out of the camera. Every
+// print starts undeveloped: tap the top one to shake it and it develops, tap it again to flick
+// it to the bottom of the pile, or tap a corner peeking out underneath to pull that one up.
+// Saying hello to Subbi or a puppy in the row above (Family.astro, the `pet:hello` event)
+// brings their print to the top. Without JavaScript the prints simply sit in a row, developed.
+import { Image } from 'astro:assets';
+import subbiKittens from '../assets/pets/subbi-kittens.jpg';
+import puppies from '../assets/pets/puppies.jpg';
+import kittenPile from '../assets/pets/kitten-pile.jpg';
+
+// `who` matches the kind of silhouette that calls the print up ('cat' is Subbi).
+const prints = [
+  {
+    src: subbiKittens,
+    who: 'cat',
+    alt: 'Subbi, a black-and-white cat, stretched out in the sun on a garden path with her tabby kittens asleep against her; one kitten sits up, watching the camera.',
+    note: 'Subbi, off duty. One kitten still on watch.',
+    ratio: '4/5',
+    pos: '50% 64%',
+    r: -3,
+  },
+  {
+    src: puppies,
+    who: 'puppy',
+    alt: 'Three brown puppies crowding the camera beside a clay bowl; the nearest one is a blur of nose and tongue.',
+    note: 'The puppies, inspecting the photographer.',
+    ratio: '4/5',
+    pos: '50% 40%',
+    r: 4,
+  },
+  {
+    src: kittenPile,
+    who: '',
+    alt: 'Kittens asleep in a heap on top of two sacks against a grey wall.',
+    note: 'Kitten pile, on the good sacks.',
+    ratio: '16/10',
+    pos: '50% 68%',
+    r: -1.5,
+  },
+  {
+    video: '/media/pets/subbi.mp4',
+    poster: '/media/pets/subbi-poster.jpg',
+    who: 'cat',
+    alt: 'A short clip of Subbi looking straight up at the camera, then wandering off across red tiles.',
+    note: 'Subbi, supervising.',
+    ratio: '4/5',
+    pos: '50% 50%',
+    r: 2.5,
+  },
+];
+---
+
+<div class="pile">
+  <div class="prints" data-prints role="group" aria-label="Photos of Subbi, her kittens and the puppies">
+    {
+      prints.map((p, i) => (
+        <button
+          type="button"
+          class:list={['print', { wide: p.ratio === '16/10' }]}
+          data-print
+          data-who={p.who}
+          data-alt={p.alt}
+          data-note={p.note}
+          aria-label={`${p.alt} ${p.note}`}
+          style={`--r:${p.r}deg;--d:${i};--ratio:${p.ratio};--pos:${p.pos}`}
+        >
+          <span class="shot">
+            {p.src ? (
+              <Image
+                src={p.src}
+                alt=""
+                widths={p.ratio === '16/10' ? [400, 700, 1000] : [320, 560, 800]}
+                sizes={p.ratio === '16/10' ? '(min-width: 760px) 25rem, 84vw' : '(min-width: 760px) 17rem, 64vw'}
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <>
+                <img src={p.poster} alt="" width="480" height="600" loading="lazy" decoding="async" />
+                <video src={p.video} muted loop playsinline preload="none" aria-hidden="true" data-print-video />
+              </>
+            )}
+          </span>
+          <span class="note" aria-hidden="true">{p.note}</span>
+        </button>
+      ))
+    }
+  </div>
+  <p class="pile-hint">Fresh out of the camera. Tap to shake, then tap again for the next.</p>
+  <p class="visually-hidden" aria-live="polite" data-prints-live></p>
+</div>
+
+<style>
+  .pile {
+    margin-top: var(--space-6);
+  }
+  /* Without JavaScript: a plain row of developed prints. */
+  .prints {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+  .print {
+    position: relative;
+    display: block;
+    width: min(17rem, 64vw);
+    margin: 0;
+    padding: 0.55rem 0.55rem 0;
+    border: 0;
+    border-radius: 3px;
+    background: #f2eee6;
+    color: #3b4049;
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    rotate: var(--r);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 14px 30px rgba(0, 0, 0, 0.45);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .print.wide {
+    width: min(25rem, 84vw);
+  }
+  .print:focus-visible {
+    outline: 2px solid #eef3f8;
+    outline-offset: 4px;
+  }
+  .shot {
+    position: relative;
+    display: block;
+    aspect-ratio: var(--ratio);
+    overflow: hidden;
+    border-radius: 1px;
+    background: #2a2f38;
+  }
+  .shot :is(img, video) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--pos);
+  }
+  .shot video {
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .print.playing video {
+    opacity: 1;
+  }
+  .note {
+    display: block;
+    min-height: 3rem;
+    padding: 0.6rem 0.35rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-style: italic;
+    line-height: 1.25;
+    rotate: -1deg;
+  }
+  .pile-hint {
+    margin-top: var(--space-4);
+    text-align: center;
+    font-size: var(--step--1);
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  /* With JavaScript: one pile, the top print on top. */
+  :global(.js) .prints {
+    display: grid;
+    place-items: center;
+    padding-block: 1rem 1.5rem;
+    overflow-x: clip;
+  }
+  :global(.js) .print {
+    grid-area: 1 / 1;
+    /* The pile fans a little down and to the right, so the corners underneath peek out. */
+    translate: calc((var(--d) - 1.5) * 0.5rem) calc((var(--d) - 1.5) * 0.4rem);
+    transition:
+      translate 0.5s var(--ease-out),
+      box-shadow 0.3s;
+  }
+  :global(.js) .print[tabindex='0']:hover {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 20px 40px rgba(0, 0, 0, 0.55);
+  }
+  /* Undeveloped: a pale chemical haze with only a ghost of the picture, no caption yet. */
+  :global(.js) .shot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #cbc8be;
+    opacity: 0;
+    transition: opacity 2.8s cubic-bezier(0.3, 0.1, 0.3, 1);
+    pointer-events: none;
+  }
+  :global(.js) .shot :is(img, video) {
+    transition:
+      filter 3.2s cubic-bezier(0.3, 0.1, 0.3, 1),
+      opacity 0.4s;
+  }
+  :global(.js) .note {
+    transition: opacity 0.9s ease 1.6s;
+  }
+  :global(.js) .print:not(.dev) .shot::after {
+    opacity: 0.8;
+  }
+  :global(.js) .print:not(.dev) .shot :is(img, video) {
+    filter: brightness(1.55) contrast(0.32) saturate(0.1) sepia(0.35) blur(1.5px);
+  }
+  :global(.js) .print:not(.dev) .note {
+    opacity: 0;
+    transition: none;
+  }
+
+  /* Shake it to develop it; flick it to the back of the pile; pulled up from underneath. */
+  .print.shake {
+    animation: print-shake 0.6s ease-in-out;
+  }
+  .print.toss {
+    animation: print-toss 0.75s cubic-bezier(0.4, 0, 0.3, 1);
+  }
+  .print.lift {
+    animation: print-lift 0.5s var(--ease-out);
+  }
+  @keyframes print-shake {
+    15% {
+      transform: translateX(-7px) rotate(-5deg);
+    }
+    35% {
+      transform: translateX(7px) rotate(4deg);
+    }
+    55% {
+      transform: translateX(-5px) rotate(-3deg);
+    }
+    75% {
+      transform: translateX(3px) rotate(2deg);
+    }
+  }
+  @keyframes print-toss {
+    45% {
+      transform: translate(var(--tx, 60%), -5%) rotate(var(--tr, 12deg));
+    }
+  }
+  @keyframes print-lift {
+    40% {
+      transform: translateY(-8%) scale(1.04);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.js) .print {
+      transition: none;
+    }
+    .print.shake,
+    .print.toss,
+    .print.lift {
+      animation: none;
+    }
+    :global(.js) .shot::after,
+    :global(.js) .shot :is(img, video) {
+      transition-duration: 0.6s;
+    }
+    :global(.js) .note {
+      transition-delay: 0.3s;
+    }
+  }
+</style>
+
+<script>
+  const stack = document.querySelector<HTMLElement>('[data-prints]');
+  if (stack) {
+    const cards = [...stack.querySelectorAll<HTMLButtonElement>('[data-print]')];
+    const live = document.querySelector<HTMLElement>('[data-prints-live]');
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const n = cards.length;
+    let order = cards.map((_, i) => i);
+    let busy = false;
+    let side = 1;
+    let inView = false;
+
+    const developed = (c: HTMLElement) => c.classList.contains('dev');
+
+    function play(c: HTMLElement, cls: string, ms: number) {
+      if (still) return;
+      c.classList.remove(cls);
+      void c.offsetWidth; // restart the animation
+      c.classList.add(cls);
+      setTimeout(() => c.classList.remove(cls), ms);
+    }
+
+    function label(c: HTMLButtonElement) {
+      c.setAttribute(
+        'aria-label',
+        developed(c)
+          ? `${c.dataset.alt} “${c.dataset.note}” Press for the next photo.`
+          : `An instant photo, still developing. Press to shake it.`,
+      );
+    }
+
+    // Only the top print is in the tab order and visible to screen readers; the corners
+    // underneath can still be tapped.
+    function layout() {
+      const top = cards[order[0]];
+      order.forEach((ci, depth) => {
+        const c = cards[ci];
+        c.style.setProperty('--d', String(depth));
+        c.style.zIndex = String(n - depth);
+        c.tabIndex = depth === 0 ? 0 : -1;
+        if (depth === 0) c.removeAttribute('aria-hidden');
+        else c.setAttribute('aria-hidden', 'true');
+        label(c);
+      });
+      if (document.activeElement instanceof HTMLButtonElement && cards.includes(document.activeElement) && document.activeElement !== top) {
+        top.focus({ preventScroll: true });
+      }
+      syncVideo();
+    }
+
+    // The clip only downloads and plays while it's the developed top print, on screen.
+    function syncVideo() {
+      for (const c of cards) {
+        const v = c.querySelector<HTMLVideoElement>('[data-print-video]');
+        if (!v) continue;
+        if (!still && inView && developed(c) && c === cards[order[0]]) {
+          v.play()
+            .then(() => c.classList.add('playing'))
+            .catch(() => {});
+        } else {
+          v.pause();
+        }
+      }
+    }
+
+    function develop(c: HTMLButtonElement) {
+      c.classList.add('dev');
+      play(c, 'shake', 650);
+      label(c);
+      setTimeout(() => live && (live.textContent = c.dataset.note ?? ''), still ? 300 : 1600);
+      setTimeout(syncVideo, still ? 0 : 1200);
+    }
+
+    function toss() {
+      const c = cards[order[0]];
+      busy = true;
+      side = -side;
+      c.style.setProperty('--tx', `${side * 62}%`);
+      c.style.setProperty('--tr', `${side * 13}deg`);
+      play(c, 'toss', 800);
+      setTimeout(
+        () => {
+          order = [...order.slice(1), order[0]];
+          layout();
+          busy = false;
+        },
+        still ? 0 : 340,
+      );
+    }
+
+    function raise(ci: number) {
+      if (order[0] === ci) return;
+      order = [ci, ...order.filter((x) => x !== ci)];
+      layout();
+      play(cards[ci], 'lift', 550);
+    }
+
+    cards.forEach((c, ci) =>
+      c.addEventListener('click', () => {
+        if (busy) return;
+        if (order[0] !== ci) raise(ci);
+        else if (!developed(c)) develop(c);
+        else toss();
+      }),
+    );
+
+    // Hello to Subbi or a puppy in the row above brings their print up.
+    window.addEventListener('pet:hello', (e) => {
+      const kind = (e as CustomEvent<{ kind: string }>).detail.kind;
+      if (busy || cards[order[0]].dataset.who === kind) return;
+      const ci = order.find((i) => cards[i].dataset.who === kind);
+      if (ci !== undefined) raise(ci);
+    });
+
+    new IntersectionObserver(
+      ([e]) => {
+        inView = e.isIntersecting;
+        syncVideo();
+      },
+      { threshold: 0.25 },
+    ).observe(stack);
+
+    layout();
+  }
+</script>

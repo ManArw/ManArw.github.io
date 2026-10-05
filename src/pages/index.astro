@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import Family from '../components/Family.astro';
+import Snapshots from '../components/Snapshots.astro';
 import SoundToggle from '../components/SoundToggle.astro';
 import D2CTeaser from '../components/D2CTeaser.astro';
 import fuji from '../assets/fuji.jpg';
@@ -88,6 +89,7 @@ const jsonLd = {
         <h2 id="family-title" class="big reveal" style="--delay:120ms">the rest of the household.</h2>
         <div class="family-wrap">
           <Family />
+          <Snapshots />
         </div>
       </div>
     </section>

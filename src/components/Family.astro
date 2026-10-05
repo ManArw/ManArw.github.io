@@ -28,6 +28,7 @@ let pupIndex = 0;
               class="pet"
               data-pet
               data-name={member.name}
+              data-kind={member.kind}
               data-says={JSON.stringify(member.says)}
               aria-label={`${member.name}, ${member.note}. Say hello.`}
             >
@@ -445,8 +446,25 @@ let pupIndex = 0;
 </style>
 
 <script>
+  import { fanfare, prime } from '../lib/fanfare';
+
   const live = document.querySelector<HTMLElement>('[data-pet-live]');
-  document.querySelectorAll<HTMLButtonElement>('[data-pet]').forEach((pet) => {
+  const pets = document.querySelectorAll<HTMLButtonElement>('[data-pet]');
+  // Saying hello to every one of them is an advancement, with the sound to match.
+  const met = new Set<string>();
+  pets.forEach((pet) => {
+    pet.addEventListener('click', () => {
+      const name = pet.dataset.name!;
+      met.add(name);
+      prime();
+      window.dispatchEvent(new CustomEvent('pet:hello', { detail: { name, kind: pet.dataset.kind } }));
+      if (met.size === pets.length) {
+        fanfare();
+        setTimeout(() => live && (live.textContent = 'Advancement made: met the whole household.'), 1500);
+      }
+    });
+  });
+  pets.forEach((pet) => {
     const bubble = pet.querySelector<HTMLElement>('[data-bubble]')!;
     const says: string[] = JSON.parse(pet.dataset.says ?? '[]');
     const isCat = pet.closest('.cat') !== null;

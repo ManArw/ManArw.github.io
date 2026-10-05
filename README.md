@@ -24,6 +24,8 @@ npm run narrate    # generate narration for new/changed pieces (see docs/AUDIO.m
 | Synced essays and notes (don't edit by hand) | `src/data/substack-snapshot.json`, `src/data/notes-snapshot.json` |
 | The content model every page reads from | `src/lib/content.ts` |
 | Hero photo | `src/assets/fuji.jpg` (replace with a higher-res copy any time, same name) |
+| Pet photos on the home page (the instant-print pile under the household) | `src/assets/pets/`, Subbi's clip in `public/media/pets/`, captions in `src/components/Snapshots.astro` |
+| The advancement sound (plays once after saying hello to the whole household, or reacting at the end of the Japan travelogue; only ever after a tap) | `public/sounds/advancement.mp3`, `src/lib/fanfare.ts` |
 | Japan photos | `src/assets/japan/` · clips in `public/media/japan/` (both made from the phone originals by `scripts/prepare-japan-media.mjs`) |
 | Reaction labels and emoji | `src/data/reactions.ts` |
 | Which pieces are narrated, and the voice | `src/data/narration.mjs` (see [docs/AUDIO.md](docs/AUDIO.md)) |
