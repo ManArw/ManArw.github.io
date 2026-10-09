@@ -168,7 +168,8 @@ Stats live at <https://manarw.goatcounter.com>, and the footer shows "N visitors
 ## Deploying
 
 Pushing to `main` builds and deploys. In the repo, **Settings → Pages → Build and deployment →
-Source** should be **GitHub Actions**.
+Source** is set to **GitHub Actions** (switched 9 Oct 2026). If it's ever back on "Deploy from a
+branch", GitHub also tries to build the repo with Jekyll on every push and emails a failure.
 
 ### Custom domain
 
