@@ -10,11 +10,11 @@ import fujiDusk from '../assets/japan/fuji-dusk.jpg';
 import fujiTrain from '../assets/japan/fuji-shinkansen.jpg';
 import cairn from '../assets/japan/cairn.jpg';
 import { site, now, socials } from '../data/site';
-import { getEssays, getNotes } from '../lib/content';
+import { getEssays, getNotes, ownNote } from '../lib/content';
 
 const articles = (await getEssays()).slice(0, 3);
 // A short Note to quote on the home page (the most recent one that fits).
-const fragment = getNotes().find((n) => n.body.length < 160 && !n.image);
+const fragment = getNotes().find((n) => ownNote(n) && n.body.length < 160 && !n.image);
 const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
 const jsonLd = {

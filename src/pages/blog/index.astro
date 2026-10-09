@@ -2,14 +2,14 @@
 import { Image } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
 import PostList from '../../components/PostList.astro';
-import { getPosts, getNotes } from '../../lib/content';
+import { getPosts, getNotes, ownNote } from '../../lib/content';
 import { tone } from '../../lib/tone';
 
 const posts = await getPosts();
 const featured = posts.find((p) => p.entry?.data.featured && p.cover && typeof p.cover !== 'string');
 const rest = posts.filter((p) => p !== featured);
 const notes = getNotes();
-const latestNote = notes.find((n) => n.body.length < 220);
+const latestNote = notes.find((n) => ownNote(n) && n.body.length < 220);
 const fmt = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
 // The featured post's cover glows in its own colours (src/lib/tone.ts).
 const glow = featured?.cover && typeof featured.cover !== 'string' ? await tone(featured.cover) : '';

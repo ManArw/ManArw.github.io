@@ -64,7 +64,20 @@ export type Note = {
   url: string;
   image: string | null;
   likes: number;
+  /** A line restacked from someone else's post. */
+  quote?: { text: string; title: string | null; author: string | null; url: string | null };
+  /** Someone else's note, restacked with a comment of his own (`body`). */
+  restack?: { author: string | null; body: string; image: string | null; url: string | null };
 };
+
+/** A note that stands on its own: his own words, with nothing quoted. */
+export const ownNote = (n: Note) => Boolean(n.body) && !n.quote && !n.restack;
+
+/** All of a note's text, his and quoted, for search. */
+export const noteText = (n: Note) =>
+  [n.body, n.quote && `“${n.quote.text}” ${n.quote.author ?? ''}`, n.restack && `${n.restack.author ?? ''}: ${n.restack.body}`]
+    .filter(Boolean)
+    .join(' ');
 
 type EssayRecord = {
   /** Reactions key, assigned once by the sync and never changed. */

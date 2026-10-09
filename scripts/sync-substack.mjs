@@ -36,6 +36,14 @@ async function fetchText(url) {
     err.retry = res.status === 429 || res.status >= 500;
     throw err;
   }
+  // The relay answers with its last good copy while Substack rate-limits it, and says since when.
+  const stale = res.headers.get('x-relay-stale-since');
+  if (stale) {
+    const err = new Error(`rate-limited by Substack; only a copy from ${stale.slice(0, 16).replace('T', ' ')} UTC`);
+    err.retry = true;
+    err.fallback = body;
+    throw err;
+  }
   return body;
 }
 
@@ -46,6 +54,7 @@ async function get(what, relayPath, directUrl, parse) {
     ['direct', directUrl],
   ].filter(([route]) => !process.env.SUBSTACK_ROUTE || route === process.env.SUBSTACK_ROUTE);
   const errors = [];
+  let fallback = null;
   for (const [route, url] of routes) {
     for (let attempt = 1; attempt <= 5; attempt++) {
       try {
@@ -55,10 +64,17 @@ async function get(what, relayPath, directUrl, parse) {
           await sleep(2000 * 2 ** (attempt - 1));
           continue;
         }
+        if (err.fallback) fallback ??= { body: err.fallback, why: err.message };
         errors.push(`${route}: ${err.message}`);
         break;
       }
     }
+  }
+  // Nothing fresh anywhere: use the relay's old copy, but say so loudly (it means new posts
+  // and notes won't show up until Substack lets the relay through again).
+  if (fallback) {
+    warn(`${what}: ${fallback.why}. New ${what.toLowerCase()} will appear once Substack stops rate-limiting.`);
+    return parse(fallback.body);
   }
   throw new Error(`${what} unavailable (${errors.join('; ')})`);
 }
@@ -170,8 +186,9 @@ async function syncNotes() {
       parseNotesPage(JSON.parse(b), SUBSTACK.userId, SUBSTACK.handle),
     );
     fresh.push(...notes);
-    // Older notes are already saved once a page contains one we know.
-    if (empty || !next || (known.size && notes.some((n) => known.has(n.id)))) break;
+    // Older notes are already saved once a page contains one we know
+    // (NOTES_FULL=1 re-reads them all, e.g. after the note format changes).
+    if (empty || !next || (!process.env.NOTES_FULL && known.size && notes.some((n) => known.has(n.id)))) break;
     cursor = next;
   }
   const map = new Map(saved.map((n) => [n.id, n]));

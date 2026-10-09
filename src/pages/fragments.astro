@@ -24,12 +24,45 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', y
         notes.map((n, i) => (
           <li class="reveal" style={`--delay:${(i % 3) * 80}ms`} id={`note-${n.id}`}>
             <figure>
-              <blockquote>
-                {n.body.split(/\n\s*\n/).map((para) => (
-                  <p>{para}</p>
-                ))}
-              </blockquote>
+              {n.body && (
+                <blockquote>
+                  {n.body.split(/\n\s*\n/).map((para) => (
+                    <p>{para}</p>
+                  ))}
+                </blockquote>
+              )}
               {n.image && <img src={n.image} alt="Image attached to this note" loading="lazy" decoding="async" />}
+              {n.quote && (
+                <div class="borrowed quote">
+                  <blockquote cite={n.quote.url ?? undefined}>
+                    <p>{n.quote.text}</p>
+                  </blockquote>
+                  <p class="source">
+                    {n.quote.author && <span>{n.quote.author}</span>}
+                    {n.quote.author && n.quote.title && <span aria-hidden="true"> · </span>}
+                    {n.quote.title &&
+                      (n.quote.url ? (
+                        <a href={n.quote.url} rel="noopener" target="_blank">
+                          {n.quote.title}
+                        </a>
+                      ) : (
+                        <cite>{n.quote.title}</cite>
+                      ))}
+                  </p>
+                </div>
+              )}
+              {n.restack && (
+                <div class="borrowed restack">
+                  {n.restack.author && <p class="who">{n.restack.author}</p>}
+                  {n.restack.body && <p class="said">{n.restack.body}</p>}
+                  {n.restack.image && <img src={n.restack.image} alt={`Image attached to ${n.restack.author ?? 'the'} note`} loading="lazy" decoding="async" />}
+                  {n.restack.url && (
+                    <a class="source" href={n.restack.url} rel="noopener" target="_blank">
+                      Their note on Substack
+                    </a>
+                  )}
+                </div>
+              )}
               <figcaption>
                 <time datetime={n.date}>{fmt.format(new Date(n.date))}</time>
                 <a href={n.url} rel="noopener" target="_blank">
@@ -95,6 +128,42 @@ const fmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', y
     margin-top: var(--space-3);
     border-radius: 8px;
     width: 100%;
+  }
+  /* Something borrowed: a line from someone's post, or a note he restacked. */
+  .borrowed {
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  blockquote + .borrowed,
+  img + .borrowed {
+    margin-top: var(--space-3);
+  }
+  .borrowed blockquote {
+    font-size: var(--step-0);
+  }
+  .borrowed .source,
+  .borrowed .who {
+    margin-top: var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+  }
+  .borrowed .who {
+    margin-top: 0;
+  }
+  .borrowed a {
+    color: var(--accent);
+  }
+  .borrowed .said {
+    margin-top: var(--space-1);
+    line-height: 1.45;
+    white-space: pre-line;
+  }
+  a.source {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
   figcaption {
     margin-top: var(--space-3);

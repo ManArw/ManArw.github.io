@@ -127,17 +127,41 @@ export function parseNotesPage(data, userId, handle) {
   const notes = [];
   for (const it of data.items) {
     const c = it.comment;
-    // Only top-level notes written by this user (skip replies and restacks).
+    // Only top-level notes posted by this user (skip replies, and plain restacks of other
+    // people's notes, which arrive as their notes rather than his).
     if (!c || it.type !== 'comment' || c.user_id !== userId || c.ancestor_path) continue;
     const body = (c.body ?? '').trim();
-    if (!body) continue;
+    const attachments = c.attachments ?? [];
+    // A line quoted from someone's post ("restack with quote"): no text of his own needed.
+    const selection = attachments.find((a) => a.type === 'post' && a.postSelection?.text);
+    const quote = selection
+      ? {
+          text: selection.postSelection.text.trim(),
+          title: selection.post?.title ?? null,
+          author: selection.post?.publishedBylines?.[0]?.name ?? selection.publication?.name ?? null,
+          url: selection.post?.canonical_url ?? null,
+        }
+      : null;
+    // Someone else's note he restacked with a comment of his own.
+    const quoted = attachments.find((a) => a.type === 'comment' && a.comment)?.comment;
+    const restack = quoted
+      ? {
+          author: quoted.user?.name ?? quoted.name ?? null,
+          body: (quoted.body ?? '').trim(),
+          image: (quoted.attachments ?? []).find((a) => a.type === 'image')?.imageUrl ?? null,
+          url: quoted.user?.handle ? `https://substack.com/@${quoted.user.handle}/note/c-${quoted.id}` : null,
+        }
+      : null;
+    if (!body && !quote?.text && !restack?.body) continue;
     notes.push({
       id: String(c.id),
       date: new Date(c.date).toISOString(),
       body,
       url: `https://substack.com/@${handle}/note/c-${c.id}`,
-      image: (c.attachments ?? []).find((a) => a.type === 'image')?.imageUrl ?? null,
+      image: attachments.find((a) => a.type === 'image')?.imageUrl ?? null,
       likes: c.reaction_count ?? 0,
+      ...(quote && { quote }),
+      ...(restack && { restack }),
     });
   }
   return { notes, next: data.nextCursor ?? null, empty: !data.items.length };
